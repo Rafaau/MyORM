@@ -5,21 +5,39 @@ namespace CLI.Methods;
 
 internal class AttributeHelpers
 {
-	internal static void GetPropsByAttribute(Type attributeType)
+	internal static Dictionary<string, object> GetPropsByAttribute(Type attributeType)
 	{
-		var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+		Dictionary<string, object> props = new();
+		string currentDirectory = Directory.GetCurrentDirectory() + "\\obj";
 
-		foreach (var assembly in assemblies)
+        foreach (var file in Directory.EnumerateFiles(currentDirectory, "*.dll", SearchOption.AllDirectories))
 		{
-			foreach (var type in assembly.GetTypes())
+			try
 			{
-				var attributes = type.GetCustomAttribute(attributeType, false);
-				if (attributes is not null)
+				var assembly = Assembly.LoadFrom(file);
+
+				foreach (var type in assembly.GetTypes())
 				{
-					Console.WriteLine("Found");
-                }
+					var attributes = type.GetCustomAttributes(attributeType, true);
+					if (attributes.Any())
+					{
+						var instance = Activator.CreateInstance(type);
+						foreach (var property in type.GetProperties())
+						{
+							props.Add(property.Name, property.GetValue(instance));
+                        }
+					}
+				}
+
+				break;
+			}
+			catch (BadImageFormatException)
+			{
+				// Ignore native DLLs and other files that aren't .NET assemblies.
 			}
 		}
+
+		return props;
 	}
 }
 

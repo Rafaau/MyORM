@@ -30,6 +30,10 @@ internal class Migration
 
 	public static void Migrate()
 	{
-		AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer));
+		var props = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer));
+		foreach (var prop in props)
+		{
+			Console.WriteLine(prop.Key + " " + prop.Value);
+		}
 	}
 }
