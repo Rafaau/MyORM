@@ -19,7 +19,11 @@ public class Program
 		}
 		else if (command.StartsWith("migration:migrate"))
 		{
-			Migration.Migrate();
+			Migration.ExecuteMigration("Up");
+		}
+		else if (command.StartsWith("migration:revert"))
+		{
+			Migration.ExecuteMigration("Down");
 		}
 		else
 		{

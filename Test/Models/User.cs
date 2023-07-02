@@ -7,8 +7,8 @@ namespace Test.Models;
 public class User
 {
 	[PrimaryGeneratedColumn]
-	public int Id;
+	public int Id { get; set; }
 
 	[Column]
-	public string Name;
+	public string Name { get; set; }
 }

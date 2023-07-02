@@ -1,5 +1,4 @@
-﻿using ORM.Attributes;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace CLI.Methods;
 
@@ -9,15 +8,25 @@ internal class AttributeHelpers
 	{
 		public string ClassName { get; set; }
 		public Dictionary<string, object> AttributeProps { get; set; } = new Dictionary<string, object>();
-		public List<FieldProps> FieldProps { get; set; } = new List<FieldProps>();
+		public List<Property> Properties { get; set; } = new List<Property>();
+		public List<MethodInfo> Methods { get; set; } = new List<MethodInfo>();
+		public object? Instance { get; set; }
 	}
 
-	internal class FieldProps
+	internal class Property
 	{
-		public string FieldName { get; set; }
-		public Type FieldType { get; set; }
-		public object? FieldValue { get; set; }
+		public string Name { get; set; }
+		public Type Type { get; set; }
+		public object? Value { get; set; }
+		public List<Type> Attributes { get; set; }
 		public Dictionary<string, object>? AttributeProps { get; set; }
+	}
+
+	internal class Method
+	{
+		public string Name { get; set; }
+		public Type ReturnType { get; set; }
+		public List<Type> ParameterTypes { get; set; }
 	}
 
 	internal static List<ClassProps> GetPropsByAttribute(Type attributeType)
@@ -44,15 +53,27 @@ internal class AttributeHelpers
 						}
 
 						var instance = Activator.CreateInstance(type);
+
 						foreach (var property in type.GetProperties())
 						{
-                            Console.WriteLine("props?");
-                            props.Last().FieldProps.Add(new FieldProps() { 
-								FieldName = property.Name,
-								FieldType = property.PropertyType,
-								FieldValue = property.GetValue(instance),
+                            props.Last().Properties.Add(new Property() { 
+								Name = property.Name,
+								Type = property.PropertyType,
+								Value = property.GetValue(instance),
+								Attributes = property
+									.GetCustomAttributes()
+									.ToArray()
+									.Select(x => x.GetType())
+									.ToList(),
 							});
                         }
+
+						foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic))
+						{
+                            props.Last().Methods.Add(method);
+						}
+
+						props.Last().Instance = instance;
 					}
 				}
 
