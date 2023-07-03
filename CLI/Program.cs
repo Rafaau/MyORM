@@ -14,8 +14,8 @@ public class Program
 
 		if (command.StartsWith("migration:create"))
 		{
-			Migration.Test();
-			//Migration.Create(args[1]);
+			//Migration.Test();
+			Migration.Create(args[1]);
 		}
 		else if (command.StartsWith("migration:migrate"))
 		{

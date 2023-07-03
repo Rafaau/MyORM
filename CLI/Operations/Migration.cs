@@ -14,13 +14,17 @@ internal class Migration
 		{
 			Directory.CreateDirectory(directoryPath);
 		}
+		string currentDirectory = Directory.GetCurrentDirectory().Split('\\').Last();
 		string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 		string filename = $"{timestamp}_{input}.cs";
 		string filepath = Path.Combine(directoryPath, filename);
 
+		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity));
+        string content = MigrationFactory.ProduceMigrationContent(types, currentDirectory, $"M{timestamp}_{input}");
+
 		using (var stream = File.CreateText(filepath))
 		{
-			stream.WriteLine("using ORM");
+			stream.WriteLine(content);
 		}
 	}
 
@@ -51,7 +55,7 @@ internal class Migration
 
 		Schema schema = new Schema(connectionString.ToString());
 
-		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).First();
+		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).Last();
 		var method = migrationProps.Methods.First(x => x.Name == methodName);
 		method.Invoke(migrationProps.Instance, new object[] { schema });
 	}
