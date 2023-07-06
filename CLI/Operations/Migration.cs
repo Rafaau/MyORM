@@ -15,6 +15,8 @@ internal class Migration
 			Directory.CreateDirectory(directoryPath);
 		}
 		string currentDirectory = Directory.GetCurrentDirectory().Split('\\').Last();
+
+		// MIGRATION
 		string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 		string filename = $"{timestamp}_{input}.cs";
 		string filepath = Path.Combine(directoryPath, filename);
@@ -25,6 +27,23 @@ internal class Migration
 		using (var stream = File.CreateText(filepath))
 		{
 			stream.WriteLine(content);
+		}
+
+		// SNAPSHOT
+		string snapshotFile = Path.Combine(directoryPath, "Snapshot.cs");
+
+		if (File.Exists(snapshotFile))
+		{
+			string snapshotContent = File.ReadAllText(snapshotFile);
+			File.WriteAllText(snapshotFile, snapshotContent);
+		}
+		else
+		{
+			string snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
+			using (var snapshotStream = File.CreateText(snapshotFile))
+			{
+				snapshotStream.WriteLine(snapshotContent);
+			}
 		}
 	}
 
@@ -50,8 +69,6 @@ internal class Migration
 	{
 		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).First();
 		var connectionString = dataAccessProps.Properties.First(x => x.Name == "ConnectionString").Value;
-
-		Console.WriteLine(connectionString);
 
 		Schema schema = new Schema(connectionString.ToString());
 

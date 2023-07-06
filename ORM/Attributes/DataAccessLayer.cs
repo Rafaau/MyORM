@@ -1,7 +1,4 @@
-﻿using System;
-
-
-namespace ORM.Attributes;
+﻿namespace ORM.Attributes;
 
 public class DataAccessLayer : Attribute
 {

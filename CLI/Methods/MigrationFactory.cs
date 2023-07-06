@@ -5,7 +5,8 @@ internal static class MigrationFactory
 	public static string ProduceMigrationContent(List<AttributeHelpers.ClassProps> types, string nameSpace, string migrationName)
 	{
 		string content = $"using ORM.Abstract;\r\nusing ORM.Attributes;\r\n\r\nnamespace {nameSpace}.Migrations;\r\n\r\n[Migration]\r\npublic partial class {migrationName} : AbstractMigration\r\n{{\r\n\tpublic override string GetDescription()\r\n\t{{\r\n\t\treturn \"\";\r\n\t}}\r\n\tpublic override void Up(Schema schema)\r\n\t{{";
-        foreach (var type in types)
+		
+		foreach (var type in types)
 		{
 			content = content.HandleEntityPropsForUp(type);
 		}
@@ -22,7 +23,7 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type)
+	internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";

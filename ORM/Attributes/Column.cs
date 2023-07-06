@@ -1,7 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace ORM.Attributes;
+﻿namespace ORM.Attributes;
 
 public class PrimaryGeneratedColumn : Attribute
 {

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace ORM;
+﻿namespace ORM;
 
 public class Entity : Attribute
 {
