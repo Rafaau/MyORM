@@ -16,4 +16,19 @@ internal static class MySQL
 			}
 		}
 	}
+
+	public static bool CheckIfTableExists(string connectionString, string tableName)
+	{
+		using (var connection = new MySqlConnection(connectionString))
+		{
+			connection.Open();
+			using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", connection))
+			{
+				using (var reader = command.ExecuteReader())
+				{
+                    return reader.HasRows;
+				}
+			}
+		}
+	}
 }

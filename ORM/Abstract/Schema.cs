@@ -20,4 +20,9 @@ public class Schema
 	{
         MySQL.ApplyMigration(connectionString, sql);
     }
+
+    public bool CheckIfTableExists(string tableName)
+    {
+		return MySQL.CheckIfTableExists(connectionString, tableName);
+	}
 }

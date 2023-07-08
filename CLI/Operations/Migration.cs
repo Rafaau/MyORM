@@ -72,7 +72,19 @@ internal class Migration
 
 		Schema schema = new Schema(connectionString.ToString());
 
+		var tableExists = schema.CheckIfTableExists("_MyORMMigrationsHistory");
 		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).Last();
+
+		if (tableExists)
+		{
+			schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+		}
+		else
+		{
+			schema.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
+			schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+		}
+
 		var method = migrationProps.Methods.First(x => x.Name == methodName);
 		method.Invoke(migrationProps.Instance, new object[] { schema });
 	}
