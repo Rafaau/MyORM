@@ -25,4 +25,9 @@ public class Schema
     {
 		return MySQL.CheckIfTableExists(connectionString, tableName);
 	}
+
+    public bool CheckIfTheLastRecord(string tableName, string columnName, string value)
+    {
+        return MySQL.CheckTheLastRecord(connectionString, tableName, columnName, value);
+    }
 }

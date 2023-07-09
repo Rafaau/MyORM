@@ -31,4 +31,27 @@ internal static class MySQL
 			}
 		}
 	}
+
+	public static bool CheckTheLastRecord(string connectionString, string tableName, string columnName, string value)
+	{
+		using (var connection = new MySqlConnection(connectionString))
+		{
+			connection.Open();
+			using (DbCommand command = new MySqlCommand($"SELECT {columnName} FROM {tableName} ORDER BY Id DESC LIMIT 1;", connection))
+			{
+				using (var reader = command.ExecuteReader())
+				{
+					if (reader.Read())
+					{
+						string columnValue = reader.GetString(0);
+						return columnValue.Equals(value);
+					} 
+					else
+					{
+						return false;
+					}
+				}
+			}
+		}
+	}
 }

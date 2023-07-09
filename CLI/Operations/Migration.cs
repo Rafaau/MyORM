@@ -72,12 +72,17 @@ internal class Migration
 
 		Schema schema = new Schema(connectionString.ToString());
 
-		var tableExists = schema.CheckIfTableExists("_MyORMMigrationsHistory");
 		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).Last();
 
-		if (tableExists)
+		if (schema.CheckIfTableExists("_MyORMMigrationsHistory"))
 		{
-			schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+			if (!schema.CheckIfTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
+				schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+			else
+			{
+				Console.WriteLine($"{(methodName == "Up" ? "Provided migration already executed" : "Provided migration already reverted")}");
+				return;
+			}
 		}
 		else
 		{
