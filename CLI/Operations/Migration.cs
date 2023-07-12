@@ -16,25 +16,14 @@ internal class Migration
 		}
 		string currentDirectory = Directory.GetCurrentDirectory().Split('\\').Last();
 
-		// MIGRATION
-		string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-		string filename = $"{timestamp}_{input}.cs";
-		string filepath = Path.Combine(directoryPath, filename);
-
 		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity));
-        string content = MigrationFactory.ProduceMigrationContent(types, currentDirectory, $"M{timestamp}_{input}");
-
-		using (var stream = File.CreateText(filepath))
-		{
-			stream.WriteLine(content);
-		}
 
 		// SNAPSHOT
 		string snapshotFile = Path.Combine(directoryPath, "Snapshot.cs");
 
 		if (File.Exists(snapshotFile))
 		{
-			string snapshotContent = File.ReadAllText(snapshotFile);
+			string snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
 			File.WriteAllText(snapshotFile, snapshotContent);
 		}
 		else
@@ -45,24 +34,18 @@ internal class Migration
 				snapshotStream.WriteLine(snapshotContent);
 			}
 		}
-	}
 
-	public static void Test()
-	{
-		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity));
-		foreach (var type in types)
+		// MIGRATION
+		string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+		string filename = $"{timestamp}_{input}.cs";
+		string filepath = Path.Combine(directoryPath, filename);
+
+        string content = MigrationFactory.ProduceMigrationContent(types, currentDirectory, $"M{timestamp}_{input}", File.ReadAllText(snapshotFile));
+
+		using (var stream = File.CreateText(filepath))
 		{
-			Console.WriteLine($"Class:{type.ClassName} | Key:{type.AttributeProps.First().Key}, Value:{type.AttributeProps.First().Value}");
-            Console.WriteLine(type.Properties.Count());
-
-            foreach (var field in type.Properties)
-			{
-				string attributes = string.Join(", ", field.Attributes.Select(x => x.Name));
-				Console.WriteLine($"{field.Type.ToString()} {field.Name} - {attributes}");
-			}
-
-            Console.WriteLine("------------------------------");
-        }
+			stream.WriteLine(content);
+		}
 	}
 
 	public static void ExecuteMigration(string methodName)
