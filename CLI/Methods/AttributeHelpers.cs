@@ -42,7 +42,7 @@ internal class AttributeHelpers
 
 				foreach (var type in assembly.GetTypes())
 				{
-					var attribute = type.GetCustomAttribute(attributeType, true);
+                    var attribute = type.GetCustomAttribute(attributeType, true);
 					if (attribute != null)
 					{
 						props.Add(new ClassProps() { ClassName = type.Name });

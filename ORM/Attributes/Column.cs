@@ -13,8 +13,7 @@ public class Column : Attribute
 
 	public Column()
 	{
-
-	}
+    }
 
 	public Column(string name)
 	{

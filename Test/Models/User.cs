@@ -11,4 +11,7 @@ public class User
 
 	[Column]
 	public string Name { get; set; }
+
+	[Column]
+	public string Email { get; set; }
 }
