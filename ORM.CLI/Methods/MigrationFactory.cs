@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using ORM.Common;
 using ORM.Models;
 
 namespace CLI.Methods;
@@ -15,14 +16,14 @@ internal static class MigrationFactory
 		
 		foreach (var type in types)
 		{
-			content = content.HandleEntityPropsForUp(type, snapshotContent, modelStatements.Single(x => x.Name == type.ClassName));
+			content = content.HandleEntityPropsForUp(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
 		}
 
 		content+= "\r\n\t}\r\n\tpublic override void Down(Schema schema)\r\n\t{";
 
 		foreach (var type in types)
 		{
-			content = content.HandleEntityPropsForDown(type, snapshotContent, modelStatements.Single(x => x.Name == type.ClassName));
+			content = content.HandleEntityPropsForDown(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
 		}
 
 		content += "\r\n\t}\r\n}";
@@ -30,7 +31,7 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement modelStatement)
+	internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
@@ -40,7 +41,7 @@ internal static class MigrationFactory
 
         foreach (var prop in type.Properties)
 		{
-			propsString += HandlePropertyOptions(prop);
+			propsString += HandlePropertyOptions(prop, Operation.Create);
 			if (index != type.Properties.Count())
 				propsString += ", ";
 			index++;
@@ -64,7 +65,7 @@ internal static class MigrationFactory
 
 		foreach (var prop in type.Properties)
 		{
-			propsString += HandlePropertyOptions(prop);
+			propsString += HandlePropertyOptions(prop, Operation.Create);
 			if (index != type.Properties.Count())
 				propsString += ", ";
 			index++;
@@ -75,7 +76,7 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement modelStatement)
+	private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
@@ -88,12 +89,14 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	internal static string HandlePropertyOptions(AttributeHelpers.Property prop)
+	internal static string HandlePropertyOptions(AttributeHelpers.Property prop, Operation operation)
     {
         string content = "";
 
 		if (prop.Attributes.Select(x => x.Name).Contains("PrimaryGeneratedColumn"))
 			content += $"{prop.Name} INT AUTO_INCREMENT NOT NULL, PRIMARY KEY ({prop.Name})";
+		else if (prop.Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
+            content += $"{prop.ColumnName} INT UNIQUE, {(operation == Operation.Alter ? "ADD" : "")} FOREIGN KEY ({prop.ColumnName}) REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
 		else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{
             switch (prop.Type.ToString())
@@ -133,12 +136,12 @@ internal static class MigrationFactory
 				if (method == Method.Up)
                 {
                     propsString += "ADD ";
-                    propsString += HandlePropertyOptions(prop);
+                    propsString += HandlePropertyOptions(prop, Operation.Alter);
                 }
                 else
                 {
                     propsString += "DROP COLUMN ";
-                    propsString += prop.Name;
+                    propsString += prop.ColumnName;
                 }
 
                 index++;
@@ -177,5 +180,11 @@ internal static class MigrationFactory
     {
 		Up,
 		Down
+    }
+
+    internal enum Operation
+    {
+		Create,
+		Alter
     }
 }

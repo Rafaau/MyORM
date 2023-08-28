@@ -3,6 +3,7 @@ using CLI.Methods;
 using ORM;
 using ORM.Abstract;
 using ORM.Attributes;
+using ORM.Common;
 
 namespace CLI.Operations;
 
@@ -17,7 +18,7 @@ internal class Migration
 		_logger.LogInfo("BuildStarted", null);
         try
         {
-            Project.Build(Directory.GetFiles(Directory.GetCurrentDirectory(), "*.csproj")[0]);
+            Project.Build();
         }
         catch (Exception e)
         {
@@ -84,6 +85,7 @@ internal class Migration
 		Schema schema = new Schema(connectionString.ToString());
 
 		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).Last();
+		var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Snapshot)).Last();
 
 		if (schema.CheckIfTableExists("_MyORMMigrationsHistory"))
 		{
@@ -94,14 +96,17 @@ internal class Migration
 				Console.WriteLine($"{(methodName == "Up" ? "Provided migration already executed" : "Provided migration already reverted")}");
 				return;
 			}
-		}
+
+            var method = migrationProps.Methods.First(x => x.Name == methodName);
+            method.Invoke(migrationProps.Instance, new object[] { schema });
+}
 		else
 		{
 			schema.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
 			schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
-		}
-
-		var method = migrationProps.Methods.First(x => x.Name == methodName);
-		method.Invoke(migrationProps.Instance, new object[] { schema });
-	}
+            
+            var method = snapshotProps.Methods.First(x => x.Name == "CreateDBFromSnapshot");
+            method.Invoke(snapshotProps.Instance, new object[] { schema });
+        }
+    }
 }

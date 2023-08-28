@@ -1,5 +1,5 @@
 ﻿namespace ORM.Attributes;
 
-public class Snapshot : Attribute
+public sealed class Snapshot : Attribute
 {
 }

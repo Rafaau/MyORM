@@ -1,11 +1,4 @@
-﻿namespace ORM.Attributes;
-
-public class PrimaryGeneratedColumn : Attribute
-{
-	public PrimaryGeneratedColumn()
-	{
-	}
-}
+﻿namespace ORM;
 
 public class Column : Attribute
 {
@@ -19,4 +12,22 @@ public class Column : Attribute
 	{
 		Name = name;
 	}
+}
+
+public sealed class PrimaryGeneratedColumn : Column
+{
+    public PrimaryGeneratedColumn()
+    {
+    }
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class OneToOne<T> : Column where T : class
+{
+    public Type RelationModel { get; set; }
+
+    public OneToOne()
+    {
+        RelationModel = typeof(T);
+    }
 }

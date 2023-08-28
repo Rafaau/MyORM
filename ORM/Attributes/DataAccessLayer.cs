@@ -1,5 +1,5 @@
 ﻿namespace ORM.Attributes;
 
-public class DataAccessLayer : Attribute
+public sealed class DataAccessLayer : Attribute
 {
 }

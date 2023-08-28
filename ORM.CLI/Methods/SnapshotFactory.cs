@@ -1,4 +1,6 @@
-﻿namespace CLI.Methods;
+﻿using ORM.Common;
+
+namespace CLI.Methods;
 
 internal static class SnapshotFactory
 {
@@ -32,7 +34,7 @@ internal static class SnapshotFactory
 
         foreach (var prop in type.Properties)
         {
-            model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{MigrationFactory.HandlePropertyOptions(prop).Substring(prop.Name.Length + 1)}\"),";
+            model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.ColumnName.Length + 1)}\"),";
         }
 
         model += "\r\n\t\t})";

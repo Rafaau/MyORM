@@ -1,5 +1,5 @@
 ﻿namespace ORM.Attributes;
 
-public class Migration : Attribute
+public sealed class Migration : Attribute
 {
 }

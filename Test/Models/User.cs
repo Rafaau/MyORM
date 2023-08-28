@@ -1,5 +1,4 @@
 ﻿using ORM;
-using ORM.Attributes;
 
 namespace Test.Models;
 
@@ -14,4 +13,7 @@ public class User
 
 	[Column]
 	public string Email { get; set; }
+
+	[OneToOne<Account>]
+	public Account Account { get; set; }
 }

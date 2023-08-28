@@ -7,7 +7,8 @@ internal class ErrorMessage : Message
     public override Dictionary<string, string> MessageContent { get; } = new()
     {
         { "MissingMigrationName", "Missing the following arguments: Migration Name" },
-        { "InvalidInput", "Invalid input" }
+        { "InvalidInput", "Invalid input" },
+        { "Exception", "An exception has been thrown: "}
     };
 }
 

@@ -48,7 +48,7 @@ public class Program
             }
             catch (Exception e)
             {
-                logger.LogError(e.Message);
+                logger.LogError("Exception", new[] { e.Message, e.Source });
             }
 
         }
