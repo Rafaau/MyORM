@@ -29,6 +29,7 @@ public class AttributeHelpers
         public object? Value { get; set; }
         public List<Type> Attributes { get; set; }
         public Dictionary<string, object>? AttributeProps { get; set; }
+        public ClassProps ParentClass { get; set; }
 
         public string ColumnName
         {
@@ -86,6 +87,7 @@ public class AttributeHelpers
                                     .ToArray()
                                     .Select(x => x.GetType())
                                     .ToList(),
+                                ParentClass = props.Last(),
                             });
                         }
 
@@ -135,6 +137,7 @@ public class AttributeHelpers
                         .ToArray()
                         .Select(x => x.GetType())
                         .ToList(),
+                    ParentClass = props,
                 });
             }
 

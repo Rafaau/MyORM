@@ -22,8 +22,9 @@ internal abstract class Message
     {
         Console.ForegroundColor = ConsoleColor.White;
         Console.BackgroundColor = BackgroundColor;
-        Console.WriteLine($"{MessageContent[$"{messageKey}"]}{(args is not null ? string.Join(",\n", args) : "")}");
+        Console.WriteLine($"{MessageContent[$"{messageKey}"]}{(args is not null ? string.Join("\n", args) : "")}");
         Console.ResetColor();
+        Console.WriteLine("");
         args = null;
     }
 

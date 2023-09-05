@@ -13,6 +13,11 @@ internal static class SnapshotFactory
 			content = content.HandleEntityPropsForUp(type);
 		}
 
+        foreach (var type in types)
+        {
+            content = content.HandleEntityRelationPropsForUp(type);
+        }
+
         content += "\r\n\t}\r\n\tpublic override List<ModelStatement> GetModelsStatements()\r\n\t{";
         content += "\r\n\t\tList<ModelStatement> models = new();\r\n";
         
@@ -34,7 +39,9 @@ internal static class SnapshotFactory
 
         foreach (var prop in type.Properties)
         {
-            model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.ColumnName.Length + 1)}\"),";
+            bool isRelational = prop.Attributes.Any(attribute => attribute.FullName.Contains("OneToOne"));
+            int index = isRelational ? 2 : 1;
+            model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
         }
 
         model += "\r\n\t\t})";

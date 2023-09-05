@@ -21,6 +21,7 @@ public class Schema
 
     public void Execute(string sql)
 	{
+        Console.WriteLine(sql);
         MySQL.ExecuteNonQuery(sql);
     }
 

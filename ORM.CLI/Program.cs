@@ -1,10 +1,11 @@
-﻿using CLI.Messaging;
+﻿using System.Diagnostics;
+using CLI.Messaging;
 using CLI.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 // 1. dotnet pack
-// 2. dotnet tool install / update --global --add-source ./nupkg cli
+// 2. dotnet tool install / update --global --add-source ./nupkg orm.cli
 public class Program
 {
     private static void Main(string[] args)
@@ -48,7 +49,11 @@ public class Program
             }
             catch (Exception e)
             {
-                logger.LogError("Exception", new[] { e.Message, e.Source });
+                var st = new StackTrace(e, true);
+                var frame = st.GetFrame(0);
+                var line = frame.GetFileLineNumber();
+                var file = frame.GetFileName();
+                logger.LogError("Exception", new[] { e.Message, e.Source, $"File: {file}", $"Line: {line}" });
             }
 
         }

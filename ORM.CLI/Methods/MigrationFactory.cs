@@ -63,10 +63,14 @@ internal static class MigrationFactory
 		string propsString = "";
 		int index = 1;
 
-		foreach (var prop in type.Properties)
+        var properties =
+            type.Properties.Where(x => x.Attributes.Any(attribute => !attribute.FullName.Contains("OneToOne")));
+
+
+        foreach (var prop in properties)
 		{
 			propsString += HandlePropertyOptions(prop, Operation.Create);
-			if (index != type.Properties.Count())
+			if (index != properties.Count())
 				propsString += ", ";
 			index++;
 		}
@@ -76,7 +80,25 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
+    internal static string HandleEntityRelationPropsForUp(this string content, AttributeHelpers.ClassProps type)
+    {
+        var name = type.AttributeProps.Where(x => x.Key == "Name");
+        string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
+
+        string propsString = "";
+        int index = 1;
+
+        foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName.Contains("OneToOne"))))
+        {
+            propsString += $"ADD {prop.Name}Id INT UNIQUE, ADD FOREIGN KEY ({prop.Name}Id) REFERENCES {prop.ParentClass.TableName}(Id)";
+        }
+
+        content += $"\r\n\t\tschema.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+
+        return content;
+    }
+
+    private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
@@ -97,7 +119,7 @@ internal static class MigrationFactory
 			content += $"{prop.Name} INT AUTO_INCREMENT NOT NULL, PRIMARY KEY ({prop.Name})";
 		else if (prop.Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
             content += $"{prop.ColumnName} INT UNIQUE, {(operation == Operation.Alter ? "ADD" : "")} FOREIGN KEY ({prop.ColumnName}) REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
-		else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
+        else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{
             switch (prop.Type.ToString())
 			{
@@ -186,5 +208,11 @@ internal static class MigrationFactory
     {
 		Create,
 		Alter
+    }
+
+    internal enum Destination
+    {
+        Migration,
+		Snapshot
     }
 }
