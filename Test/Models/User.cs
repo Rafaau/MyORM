@@ -1,4 +1,6 @@
 ﻿using ORM;
+using ORM.Enums;
+using System.Text.Json.Serialization;
 
 namespace Test.Models;
 
@@ -14,6 +16,6 @@ public class User
 	[Column]
 	public string Email { get; set; }
 
-	[OneToOne<Account>]
+	[OneToOne<Account>(Relationship.Optional)]
 	public Account Account { get; set; }
 }

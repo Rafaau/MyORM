@@ -60,7 +60,7 @@ public class AttributeHelpers
             try
             {
                 var assembly = Assembly.LoadFrom(file);
-
+                var list = assembly.GetTypes();
                 foreach (var type in assembly.GetTypes())
                 {
                     var attribute = type.GetCustomAttribute(attributeType, true);
@@ -77,6 +77,15 @@ public class AttributeHelpers
 
                         foreach (var property in type.GetProperties())
                         {
+                            Dictionary<string, object> attributeProps = new();
+                            foreach (var attr in property.GetCustomAttributes())
+                            {
+								foreach (var prop in attr.GetType().GetProperties())
+                                {
+									attributeProps.Add(prop.Name, prop.GetValue(attr));
+								}
+							}
+
                             props.Last().Properties.Add(new Property()
                             {
                                 Name = property.Name,
@@ -87,6 +96,7 @@ public class AttributeHelpers
                                     .ToArray()
                                     .Select(x => x.GetType())
                                     .ToList(),
+                                AttributeProps = attributeProps,
                                 ParentClass = props.Last(),
                             });
                         }

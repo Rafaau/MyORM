@@ -1,5 +1,5 @@
-﻿using System.Text.RegularExpressions;
-using ORM.Common;
+﻿using ORM.Common;
+using ORM.Enums;
 using ORM.Models;
 
 namespace CLI.Methods;
@@ -8,22 +8,47 @@ internal static class MigrationFactory
 {
 	public static string ProduceMigrationContent(List<AttributeHelpers.ClassProps> types, string nameSpace, string migrationName, string snapshotContent)
 	{
-        var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Snapshot))?.Last();
+        var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Snapshot))?.LastOrDefault();
         var method = snapshotProps?.Methods.First(x => x.Name == "GetModelsStatements");
         var modelStatements = (List<ModelStatement>) method?.Invoke(snapshotProps?.Instance, new object[] { })!;
 
         string content = $"using ORM.Abstract;\r\nusing ORM.Attributes;\r\n\r\nnamespace {nameSpace}.Migrations;\r\n\r\n[Migration]\r\npublic partial class {migrationName} : AbstractMigration\r\n{{\r\n\tpublic override string GetDescription()\r\n\t{{\r\n\t\treturn \"\";\r\n\t}}\r\n\tpublic override void Up(Schema schema)\r\n\t{{";
 		
-		foreach (var type in types)
+		if (snapshotContent != "")
 		{
-			content = content.HandleEntityPropsForUp(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
+			foreach (var type in types)
+			{
+				content = content.HandleEntityPropsForUp(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
+			}
+		}
+		else
+		{
+			foreach (var type in types)
+			{
+				content = content.HandleEntityPropsForUp(type);
+			}
+
+			foreach (var type in types)
+			{
+				content = content.HandleEntityRelationPropsForUp(type);
+			}
 		}
 
 		content+= "\r\n\t}\r\n\tpublic override void Down(Schema schema)\r\n\t{";
 
-		foreach (var type in types)
+		if (snapshotContent != "")
 		{
-			content = content.HandleEntityPropsForDown(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
+			foreach (var type in types)
+			{
+				content = content.HandleEntityPropsForDown(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
+			}
+		}
+		else
+		{
+			foreach (var type in types)
+			{
+				content = content.HandleEntityPropsForDown(type);
+			}
 		}
 
 		content += "\r\n\t}\r\n}";
@@ -90,13 +115,26 @@ internal static class MigrationFactory
 
         foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName.Contains("OneToOne"))))
         {
-            propsString += $"ADD {prop.Name}Id INT UNIQUE, ADD FOREIGN KEY ({prop.Name}Id) REFERENCES {prop.ParentClass.TableName}(Id)";
+			var relationshipAttr = prop.AttributeProps.FirstOrDefault(x => x.Key == "Relationship").Value;
+			Relationship relationship = relationshipAttr != null ? (Relationship)relationshipAttr : Relationship.Mandatory;
+			string relationshipString = relationship == Relationship.Optional ? "NULL" : "NOT NULL";
+
+            propsString += $"ADD {prop.Name}Id INT UNIQUE {relationshipString}, ADD FOREIGN KEY ({prop.Name}Id) REFERENCES {prop.ParentClass.TableName}(Id)";
         }
 
         content += $"\r\n\t\tschema.Execute(\"ALTER TABLE {tableName} {propsString}\");";
 
         return content;
     }
+
+	private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type)
+	{
+		var name = type.AttributeProps.Where(x => x.Key == "Name");
+		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
+
+		content += $"\r\n\t\tschema.Execute(\"DROP TABLE {tableName}\");";
+		return content;
+	}
 
     private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
 	{

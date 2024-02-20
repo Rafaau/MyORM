@@ -15,8 +15,8 @@ public partial class ModelSnapshot : AbstractSnapshot
 	{
 		schema.Execute("CREATE TABLE accounts (Id INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id), Nickname VARCHAR(255))");
 		schema.Execute("CREATE TABLE users (Id INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id), Name VARCHAR(255), Email VARCHAR(255))");
-		schema.Execute("ALTER TABLE accounts ADD UserId INT UNIQUE, ADD FOREIGN KEY (UserId) REFERENCES accounts(Id)");
-		schema.Execute("ALTER TABLE users ADD AccountId INT UNIQUE, ADD FOREIGN KEY (AccountId) REFERENCES users(Id)");
+		schema.Execute("ALTER TABLE accounts ADD UserId INT UNIQUE NOT NULL, ADD FOREIGN KEY (UserId) REFERENCES accounts(Id)");
+		schema.Execute("ALTER TABLE users ADD AccountId INT UNIQUE NULL, ADD FOREIGN KEY (AccountId) REFERENCES users(Id)");
 	}
 	public override List<ModelStatement> GetModelsStatements()
 	{

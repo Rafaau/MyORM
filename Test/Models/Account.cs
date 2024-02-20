@@ -1,4 +1,5 @@
 ﻿using ORM;
+using ORM.Enums;
 
 namespace Test.Models;
 
@@ -11,7 +12,7 @@ public class Account
     [Column]
     public string Nickname { get; set; }
 
-    [OneToOne<User>]
+    [OneToOne<User>(Relationship.Mandatory)]
     public User User { get; set; }
 }
 

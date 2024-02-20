@@ -3,6 +3,7 @@ using CLI.Messaging;
 using CLI.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using static System.Net.Mime.MediaTypeNames;
 
 // 1. dotnet pack
 // 2. dotnet tool install / update --global --add-source ./nupkg orm.cli
@@ -29,13 +30,18 @@ public class Program
             command = Console.ReadLine()!.Trim();
         }
 
+        if (command.StartsWith("test"))
+        {
+			migration.Create("Test1", "D:\\repos\\ORM\\Test");
+			logger.LogSuccess("MigrationCreated");
+		}
         if (command.StartsWith("migration:create"))
         {
             if (args.Length < 2)
                 logger.LogError("MissingMigrationName");
-            else
-            {
-                migration.Create(args[1]);
+			else
+			{
+				migration.Create(args[1]);
                 logger.LogSuccess("MigrationCreated");
             }
 

@@ -2,26 +2,28 @@ using Microsoft.AspNetCore.Mvc;
 using ORM.Querying;
 using ORM.Querying.Abstract;
 using Test.Models;
+using TestAPI.DTO;
+using ORM.Projection;
 
 namespace TestAPI.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]
-	public class WeatherForecastController : ControllerBase
+	public class UserController : ControllerBase
 	{
 		private readonly IRepository<User> _userRepository;
 
-        public WeatherForecastController(IRepository<User> userRepository)
+        public UserController(IRepository<User> userRepository)
 		{
 			_userRepository = userRepository;
 		}
 
 		[HttpPost]
-		public IActionResult Post([FromBody] User user)
+		public IActionResult Post([FromBody] UserRequest user)
 		{
             try
             {
-                _userRepository.Create(user);
+                _userRepository.Create(user.ToProjection<User>());
                 return Ok();
             }
             catch (Exception e)

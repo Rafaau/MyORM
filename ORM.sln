@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ORM.Querying", "ORM.Queryin
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ORM.Common", "ORM.Common\ORM.Common.csproj", "{B23E2650-F172-4E02-8F3F-DB16EEAEC7DA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Specifications", "ORM.Specifications\ORM.Specifications.csproj", "{FDD88406-23EF-4A10-9550-AEB884C16D6B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ORM.Specifications", "ORM.Specifications\ORM.Specifications.csproj", "{FDD88406-23EF-4A10-9550-AEB884C16D6B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Projectioner", "ORM.Projection\ORM.Projectioner.csproj", "{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

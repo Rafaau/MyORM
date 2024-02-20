@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ORM.Common\ORM.Common.csproj" />
+    <ProjectReference Include="..\ORM.Specifications\ORM.Specifications.csproj" />
     <ProjectReference Include="..\ORM\ORM.csproj" />
   </ItemGroup>
 

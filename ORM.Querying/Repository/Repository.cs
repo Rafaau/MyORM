@@ -1,11 +1,9 @@
 ﻿using ORM.Abstract;
-using ORM.Attributes;
 using ORM.Common;
 using ORM.Common.Methods;
 using System.Data;
 using System.Reflection;
 using ORM.Querying.Abstract;
-using Org.BouncyCastle.Asn1.X509;
 
 namespace ORM.Querying;
 
@@ -33,14 +31,15 @@ public class Repository<T> : IRepository<T> where T : new()
         {
             var columnName = property.Name;
             var columnValue = property.GetValue(model);
-            if (columnValue.GetType() == typeof(string))
+
+			if (columnValue is null || property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+			{
+				continue;
+			}
+
+			if (columnValue.GetType() == typeof(string))
             {
                 columnValue = $"'{columnValue}'";
-            }
-
-            if (columnValue is null || property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
-            {
-                continue;
             }
 
             columns.Add(columnName);

@@ -28,53 +28,61 @@ internal class Migration
         _logger.LogInfo("BuildSucceeded", null);
     }
 
-	public void Create(string input)
+	public void Create(string input, string currentDirectory = "")
 	{
         _logger.LogInfo("CheckingDirectory", new[] { "Migrations" });
 
-        string directoryPath = "Migrations";
+		string directoryPath = Path.Combine(currentDirectory, "Migrations");
+		if (currentDirectory == "")
+		{
+			currentDirectory = Directory.GetCurrentDirectory().Split('\\').Last();
+			directoryPath = "Migrations";
+		}
+
 		if (!Directory.Exists(directoryPath))
 		{
 			_logger.LogInfo("CreatingDirectory", null);
 			Directory.CreateDirectory(directoryPath);
 			_logger.LogInfo("DirectoryCreated", new [] { Directory.GetCurrentDirectory() });
 		}
-		string currentDirectory = Directory.GetCurrentDirectory().Split('\\').Last();
 
 		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity));
         _logger.LogInfo("ProcessingEntities", types.Select(x => x.ClassName).ToArray());
 
-        // SNAPSHOT
-		_logger.LogInfo("CheckingFile", new [] { "ModelSnapshot.cs" });
-        string snapshotFile = Path.Combine(directoryPath, "ModelSnapshot.cs");
+		// SNAPSHOT
+		_logger.LogInfo("CheckingFile", new[] { "ModelSnapshot.cs" });
+		string snapshotFile = Path.Combine(directoryPath, "ModelSnapshot.cs");
+		string snapshotContent = "";
 
-        // MIGRATION
-        string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-        string filename = $"{timestamp}_{input}.cs";
-        string filepath = Path.Combine(directoryPath, filename);
+		// MIGRATION
+		string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+		string filename = $"{timestamp}_{input}.cs";
+		string filepath = Path.Combine(directoryPath, filename);
 
-        _logger.LogInfo("ProducingMigration", null);
-        string content = MigrationFactory.ProduceMigrationContent(types, currentDirectory, $"M{timestamp}_{input}", File.Exists(snapshotFile) ? File.ReadAllText(snapshotFile) : "");
+		_logger.LogInfo("ProducingMigration", null);
+		string content = MigrationFactory.ProduceMigrationContent(types, currentDirectory, $"M{timestamp}_{input}", File.Exists(snapshotFile) ? File.ReadAllText(snapshotFile) : "");
 
-        using (var stream = File.CreateText(filepath))
-        {
-            stream.WriteLine(content);
-        }
-        _logger.LogInfo("Done", null);
-
-        if (File.Exists(snapshotFile))
+		using (var stream = File.CreateText(filepath))
 		{
-            string snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
+			stream.WriteLine(content);
+		}
+
+		if (File.Exists(snapshotFile))
+		{
+			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
 			File.WriteAllText(snapshotFile, snapshotContent);
-        }
+		}
 		else
 		{
-            _logger.LogInfo("CreatingSnapshot", new[] { "" });
-            string snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
+			_logger.LogInfo("CreatingSnapshot", new[] { "" });
+			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
 			using (var snapshotStream = File.CreateText(snapshotFile))
-                snapshotStream.WriteLine(snapshotContent);
-            _logger.LogInfo("FileCreated", new[] { $"ModelSnapshot.cs in {directoryPath}" });
-        }
+				snapshotStream.WriteLine(snapshotContent);
+			_logger.LogInfo("FileCreated", new[] { $"ModelSnapshot.cs in {directoryPath}" });
+
+		}
+
+        _logger.LogInfo("Done", null);
     }
 
 	public void ExecuteMigration(string methodName)
