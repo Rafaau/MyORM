@@ -4,6 +4,7 @@ using ORM.Common.Methods;
 using System.Data;
 using System.Reflection;
 using ORM.Querying.Abstract;
+using System.Linq.Expressions;
 
 namespace ORM.Querying;
 
@@ -12,6 +13,10 @@ public class Repository<T> : IRepository<T> where T : new()
     private Type Model { get; set; }
     private Schema Schema { get; set; }
     private AttributeHelpers.ClassProps ModelProps { get; set; }
+
+    private string OrderByColumn { get; set; } = string.Empty;
+    private string WhereString { get; set; } = string.Empty;
+    private string SelectColumns { get; set; } = "*";
 
     public Repository(AccessLayer accessLayer)
     {
@@ -53,66 +58,118 @@ public class Repository<T> : IRepository<T> where T : new()
 
     public IEnumerable<T> Find()
     {
-        var sql = $"SELECT * FROM {ModelProps.TableName}";
+        var sql = $"SELECT {SelectColumns} FROM {ModelProps.TableName} {WhereString} {OrderByColumn}";
         var result = Schema.Query(sql);
         return ConvertDataTable<T>(result);
     }
 
-    public IEnumerable<T> Find(Where? where)
+    public T? FindOne()
     {
-        string? whereString = where.GetWhereString();
-
-        var sql = $"SELECT * FROM {ModelProps.TableName} {whereString}";
-        var result = Schema.Query(sql);
-        return ConvertDataTable<T>(result);
-    }
-
-    public IEnumerable<T> Find(Order? order)
-    {
-        string? orderString = order.GetOrderString();
-
-        var sql = $"SELECT * FROM {ModelProps.TableName} {orderString}";
-        var result = Schema.Query(sql);
-        return ConvertDataTable<T>(result);
-    }
-
-    public IEnumerable<T> Find(Where? where, Order? order)
-    {
-        string? whereString = where.GetWhereString();
-        string? orderString = order.GetOrderString();
-
-        var sql = $"SELECT * FROM {ModelProps.TableName} {whereString} {orderString}";
-        var result = Schema.Query(sql);
-        return ConvertDataTable<T>(result);
-    }
-
-    public T? FindOne(Where where)
-    {
-        string whereString = where.GetWhereString();
-
-        var sql = $"SELECT * FROM {ModelProps.TableName} {whereString} LIMIT 1";
+        var sql = $"SELECT {SelectColumns} FROM {ModelProps.TableName} {WhereString} LIMIT 1";
         var result = Schema.Query(sql);
         return ConvertDataTable<T>(result).FirstOrDefault();
     }
 
-    public void Update(Where where, T model)
+    public void Update(T model)
     {
-        string whereString = where.GetWhereString();
-        string updateString = StringHelpers.GetUpdateString(model);
+        var columns = new List<string>();
+        var values = new List<string>();
 
-        var sql = $"UPDATE {ModelProps.TableName} SET {updateString} {whereString}";
+        foreach (var property in model.GetType().GetProperties())
+        {
+			var columnName = property.Name;
+			var columnValue = property.GetValue(model);
+
+			if (columnValue is null)
+            {
+				continue;
+			}
+
+            if (property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+            {
+                WhereString = $"WHERE {columnName} = {columnValue}";
+            }
+
+			if (columnValue.GetType() == typeof(string))
+            {
+				columnValue = $"'{columnValue}'";
+			}
+
+			columns.Add($"{columnName} = {columnValue}");
+		}
+
+        string columnsString = string.Join(", ", columns);
+        var sql = $"UPDATE {ModelProps.TableName} SET {columnsString} {WhereString}";
         Schema.Execute(sql);
     }
 
-    public void Delete(Where where)
+    public void UpdateMany(T model)
     {
-        string whereString = where.GetWhereString();
+		var columns = new List<string>();
+		var values = new List<string>();
 
-        var sql = $"DELETE FROM {ModelProps.TableName} {whereString}";
+		foreach (var property in model.GetType().GetProperties())
+		{
+			var columnName = property.Name;
+			var columnValue = property.GetValue(model);
+
+			if (columnValue is null || property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+			{
+				continue;
+			}
+
+			if (columnValue.GetType() == typeof(string))
+			{
+				columnValue = $"'{columnValue}'";
+			}
+
+			columns.Add($"{columnName} = {columnValue}");
+		}
+
+		string columnsString = string.Join(", ", columns);
+		var sql = $"UPDATE {ModelProps.TableName} SET {columnsString} {WhereString}";
+		Schema.Execute(sql);
+	}
+
+    public void Delete()
+    {
+        var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
         Schema.Execute(sql);
     }
 
-    private IEnumerable<T> ConvertDataTable<T>(DataTable table) where T : new()
+    public void Delete(T model)
+    {
+		foreach (var property in model.GetType().GetProperties())
+		{
+			if (property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+			{
+				WhereString = $"WHERE {property.Name} = {property.GetValue(model)}";
+			}
+		}
+
+		var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
+        Schema.Execute(sql);
+    }
+
+    public Repository<T> OrderBy(string columnName, string order = "ASC")
+	{
+		this.OrderByColumn = Parameters<T>.GetOrderString(columnName, order);
+		return this;
+	}
+
+	public Repository<T> Where(Expression<Func<T, bool>> predicate)
+	{
+		this.WhereString = Parameters<T>.GetWhereString(predicate);
+		return this;
+	}
+
+    public Repository<T> Select<TResult>(Expression<Func<T, TResult>> selector)
+    {
+		this.SelectColumns = Parameters<T>.GetSelectString(selector);
+        return this;
+	}
+
+	private IEnumerable<T> ConvertDataTable<T>(DataTable table) where T : new()
     {
         IList<T> list = new List<T>();
         foreach (DataRow row in table.Rows)
@@ -130,5 +187,4 @@ public class Repository<T> : IRepository<T> where T : new()
         }
         return list;
     }
-
 }

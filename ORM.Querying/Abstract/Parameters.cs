@@ -1,13 +1,29 @@
-﻿using System.Collections;
+﻿using ORM.Querying.Functions;
+using System.Collections;
+using System.Linq.Expressions;
+using System.Text;
 
 namespace ORM.Querying.Abstract;
 
-public class Where : ExtendedDictionary
+public static class Parameters<T> where T : new()
 {
-}
+	public static string GetWhereString(Expression<Func<T, bool>> expression)
+	{
+		StringBuilder whereClause = new StringBuilder("WHERE ");
+		ExpressionExtractor.ProcessExpression(expression.Body, whereClause);
+		return whereClause.ToString();
+	}
 
-public class Order : ExtendedDictionary
-{
+	public static string GetOrderString(string columnName, string order)
+	{
+		return $"ORDER BY {columnName} {order}";
+	}
+
+	public static string GetSelectString<TResult>(Expression<Func<T, TResult>> selector)
+	{
+		var names = ExpressionExtractor.ExtractPropertyNames(selector);
+		return string.Join(", ", names);
+	}
 }
 
 public class ExtendedDictionary : IEnumerable<KeyValuePair<string, List<object>>>

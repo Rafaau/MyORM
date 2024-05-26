@@ -18,4 +18,8 @@ public class User
 
 	[OneToOne<Account>(Relationship.Optional)]
 	public Account Account { get; set; }
+
+    public User()
+    {
+    }
 }

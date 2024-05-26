@@ -47,16 +47,13 @@ namespace TestAPI.Controllers
         }
 
         [HttpGet("/GetWithOrder")]
-        public IActionResult GetWithOrder(string order1)
+        public IActionResult GetWithOrder(string columnName, string order)
         {
             try
             {
-                var users = _userRepository.Find(
-                    order: new Order
-                    {
-                        {"ASC", order1}
-                    }
-                );
+                var users = _userRepository
+                    .OrderBy(columnName, order)
+                    .Find();
                 return Ok(users);
             }
             catch (Exception e)
@@ -65,18 +62,16 @@ namespace TestAPI.Controllers
             }
         }
 
-        [HttpGet("/GetByName")]
-        public IActionResult GetByName(string name1, string name2, string email)
+        [HttpGet("/GetBy")]
+        public IActionResult GetByName(string name, string email, int id)
         {
             try
             {
-                var users = _userRepository.Find(
-                    where: new Where
-                    {
-                        {"Name", name1, name2},
-                        {"Email", email}
-                    }
-                );
+                var users = _userRepository
+					.Where(user => user.Name == name 
+                                && user.Email == email
+                                && user.Id == id)
+					.Find();
                 return Ok(users);
             }
             catch (Exception e)
@@ -85,21 +80,31 @@ namespace TestAPI.Controllers
             }
         }
 
-        [HttpGet("/GetByNameWithOrder")]
-        public IActionResult GetByNameWithOrder(string name1, string name2, string order)
+		[HttpGet("/GetOneByName")]
+		public IActionResult GetOneByName(string name)
+		{
+			try
+			{
+				var user = _userRepository
+					.Where(user => user.Name == name)
+					.FindOne();
+				return Ok(user);
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
+
+		[HttpGet("/GetByOR")]
+        public IActionResult GetByOR(string name1, string name2)
         {
             try
             {
-                var users = _userRepository.Find(
-                    where: new Where
-                    {
-                        {"Name", name1, name2},
-                    },
-                    order: new Order
-                    {
-                        {"ASC", order}
-                    }
-                );
+                var users = _userRepository
+                    .Where(user => user.Name == name1 
+                                || user.Name == name2)
+                    .Find();
                 return Ok(users);
             }
             catch (Exception e)
@@ -108,37 +113,44 @@ namespace TestAPI.Controllers
             }
         }
 
-        [HttpGet("/GetOneByName")]
-        public IActionResult GetOneByName(string name)
-        {
-            try
-            {
-                var user = _userRepository.FindOne(
-                    where: new Where
-                    {
-                        {"Name", name}
-                    }
-                );
-                return Ok(user);
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
-            }
-        }
+		[HttpGet("/GetAllExcept")]
+		public IActionResult GetAllExcept(string name)
+		{
+			try
+			{
+				var users = _userRepository
+					.Where(user => user.Name != name)
+					.Find();
+				return Ok(users);
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
 
-        [HttpPut]
-        public IActionResult Put([FromBody] User userToUpdate)
+		[HttpGet("/GetSelect")]
+		public IActionResult GetSelect()
+		{
+			try
+			{
+				var users = _userRepository
+                    .Select(user => new { user.Name, user.Email })
+                    .Find();
+				return Ok(users);
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
+
+		[HttpPut("/UpdateOne")]
+        public IActionResult Update([FromBody] UserUpdate userToUpdate)
         {
             try
             {
-                _userRepository.Update(
-                    where: new Where
-                    {
-                        { "Id", userToUpdate.Id }
-                    },
-                    userToUpdate
-                );
+                _userRepository.Update(userToUpdate.ToProjection<User>());
                 return Ok();
             }
             catch (Exception e)
@@ -147,17 +159,28 @@ namespace TestAPI.Controllers
             }
         }
 
-        [HttpDelete]
-        public IActionResult Delete(int id)
+		[HttpPut("/UpdateMany")]
+		public IActionResult UpdateMany([FromBody] UserUpdateMany usersToUpdate, string name)
+		{
+			try
+			{
+				_userRepository.Where(user => user.Name == name)
+                               .UpdateMany(usersToUpdate.ToProjection<User>());
+				return Ok();
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
+
+		[HttpDelete("/DeleteById")]
+        public IActionResult DeleteById(int id)
         {
             try
             {
-                _userRepository.Delete(
-                    where: new Where
-                    {
-                        { "Id", id }
-                    }
-                );
+                _userRepository.Where(user => user.Id == id)
+                               .Delete();                             
                 return Ok();
             }
             catch (Exception e)
@@ -165,5 +188,34 @@ namespace TestAPI.Controllers
                 return BadRequest(e.Message);
             }
         }
-}
+
+		[HttpDelete("/DeleteByModel")]
+		public IActionResult DeleteByModel([FromBody] UserResponse userToDelete)
+		{
+			try
+			{
+                _userRepository.Delete(userToDelete.ToProjection<User>());
+				return Ok();
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
+
+		[HttpDelete("/DeleteMany")]
+		public IActionResult DeleteMany(int lessThan)
+		{
+			try
+			{
+				_userRepository.Where(user => user.Id < lessThan)
+							   .Delete();
+				return Ok();
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
+	}
 }
