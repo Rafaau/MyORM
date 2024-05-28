@@ -12,7 +12,7 @@ internal static class MigrationFactory
         var method = snapshotProps?.Methods.First(x => x.Name == "GetModelsStatements");
         var modelStatements = (List<ModelStatement>) method?.Invoke(snapshotProps?.Instance, new object[] { })!;
 
-        string content = $"using ORM.Abstract;\r\nusing ORM.Attributes;\r\n\r\nnamespace {nameSpace}.Migrations;\r\n\r\n[Migration]\r\npublic partial class {migrationName} : AbstractMigration\r\n{{\r\n\tpublic override string GetDescription()\r\n\t{{\r\n\t\treturn \"\";\r\n\t}}\r\n\tpublic override void Up(Schema schema)\r\n\t{{";
+        string content = $"using ORM.Abstract;\r\nusing ORM.Attributes;\r\n\r\nnamespace {nameSpace}.Migrations;\r\n\r\n[Migration]\r\npublic partial class {migrationName} : AbstractMigration\r\n{{\r\n\tpublic override string GetDescription()\r\n\t{{\r\n\t\treturn \"\";\r\n\t}}\r\n\tpublic override void Up(dbHandler dbHandler)\r\n\t{{";
 		
 		if (snapshotContent != "")
 		{
@@ -34,7 +34,7 @@ internal static class MigrationFactory
 			}
 		}
 
-		content+= "\r\n\t}\r\n\tpublic override void Down(Schema schema)\r\n\t{";
+		content+= "\r\n\t}\r\n\tpublic override void Down(dbHandler dbHandler)\r\n\t{";
 
 		if (snapshotContent != "")
 		{
@@ -73,7 +73,7 @@ internal static class MigrationFactory
 		}
 
         if (!snapshotContent.Contains($"CREATE TABLE {tableName}"))
-			content += $"\r\n\t\tschema.Execute(\"CREATE TABLE {tableName} ({propsString})\");";
+			content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} ({propsString})\");";
 		else
 			content = content.HandleEntityChanges(tableName, type, snapshotContent, modelStatement, Method.Up);
 
@@ -100,7 +100,7 @@ internal static class MigrationFactory
 			index++;
 		}
 
-		content += $"\r\n\t\tschema.Execute(\"CREATE TABLE {tableName} ({propsString})\");";
+		content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} ({propsString})\");";
 
 		return content;
 	}
@@ -122,7 +122,7 @@ internal static class MigrationFactory
             propsString += $"ADD {prop.Name}Id INT UNIQUE {relationshipString}, ADD FOREIGN KEY ({prop.Name}Id) REFERENCES {prop.ParentClass.TableName}(Id)";
         }
 
-        content += $"\r\n\t\tschema.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+        content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
 
         return content;
     }
@@ -132,7 +132,7 @@ internal static class MigrationFactory
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
-		content += $"\r\n\t\tschema.Execute(\"DROP TABLE {tableName}\");";
+		content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
 		return content;
 	}
 
@@ -142,7 +142,7 @@ internal static class MigrationFactory
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
 		if (!snapshotContent.Contains($"CREATE TABLE {tableName}"))
-			content += $"\r\n\t\tschema.Execute(\"DROP TABLE {tableName}\");";
+			content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
         else
             content = content.HandleEntityChanges(tableName, type, snapshotContent, modelStatement, Method.Down);
 
@@ -231,7 +231,7 @@ internal static class MigrationFactory
         }
 
 		if (propsString != "")
-            content += $"\r\n\t\tschema.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+            content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
 
         return content;
     }

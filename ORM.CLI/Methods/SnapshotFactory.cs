@@ -6,7 +6,7 @@ internal static class SnapshotFactory
 {
 	public static string ProduceShapshotContent(List<AttributeHelpers.ClassProps> types, string nameSpace)
 	{
-		string content = $"using ORM.Abstract;\r\nusing ORM.Attributes;\r\nusing ORM.Models;\r\n\r\nnamespace {nameSpace}.Migrations;\r\n\r\n[Snapshot]\r\npublic partial class ModelSnapshot : AbstractSnapshot\r\n{{\r\n\tpublic override string GetMetadata()\r\n\t{{\r\n\t\treturn \"\";\r\n\t}}\r\n\tpublic override void CreateDBFromSnapshot(Schema schema)\r\n\t{{";
+		string content = $"using ORM.Abstract;\r\nusing ORM.Attributes;\r\nusing ORM.Models;\r\n\r\nnamespace {nameSpace}.Migrations;\r\n\r\n[Snapshot]\r\npublic partial class ModelSnapshot : AbstractSnapshot\r\n{{\r\n\tpublic override string GetMetadata()\r\n\t{{\r\n\t\treturn \"\";\r\n\t}}\r\n\tpublic override void CreateDBFromSnapshot(dbHandler dbHandler)\r\n\t{{";
 
 		foreach (var type in types)
 		{

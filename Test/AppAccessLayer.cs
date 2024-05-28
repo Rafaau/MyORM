@@ -8,4 +8,8 @@ public class AppAccessLayer : AccessLayer
 {
 	public override string Name => "App";
 	public override string ConnectionString => "Server=localhost;Database=orm;User Id=root;Password=password;";
+	public override Options Options => new()
+	{
+		KeepConnectionOpen = true
+	};
 }

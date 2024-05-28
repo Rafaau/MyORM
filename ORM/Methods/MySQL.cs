@@ -3,62 +3,138 @@ using MySql.Data.MySqlClient;
 using System.Data.Common;
 
 namespace CLI.Methods;
-internal class MySQL
+internal class MySQL : IDisposable
 {
 	private DbConnection Connection { get; set; }
     private MySqlConnectionStringBuilder Builder { get; set; }
 	private string DbName { get; set; }
+    private DbTransaction? Transaction { get; set; }
+    private bool KeepConnectionOpen { get; set; }
 
-    public MySQL(string connectionString)
+    public MySQL(string connectionString, bool keepConnectionOpen)
     {
         Builder = new MySqlConnectionStringBuilder(connectionString);
         DbName = Builder.Database;
 		Builder.Database = "";
+        KeepConnectionOpen = keepConnectionOpen;
 
 		Connection = new MySqlConnection(Builder.ConnectionString);
         Connection.Open();
         CheckDatabase();
+        Connection.Close();
     }
+
+    public void CloseConnection() => Connection.Close();
+
+    public void BeginTransaction()
+    {
+        if (Connection.State == ConnectionState.Closed)
+        {
+			Connection.Open();
+		}
+		Transaction = Connection.BeginTransaction();
+	}
+
+    public void CommitTransaction()
+    {
+		Transaction?.Commit();
+		Transaction = null;
+        if (!KeepConnectionOpen)
+            Connection.Close();
+	}
+
+	public void RollbackTransaction()
+    {
+		Transaction?.Rollback();
+		Transaction = null;
+		if (!KeepConnectionOpen)
+			Connection.Close();
+	}
 
 	public void ExecuteNonQuery(string sqlCommand)
 	{
-        using (DbCommand command = Connection.CreateCommand())
-		{
-			command.CommandText = sqlCommand;
-			command.ExecuteNonQuery();
+        try
+        {
+			if (Connection.State == ConnectionState.Closed)
+			{
+				Connection.Open();
+			}
+			using (DbCommand command = Connection.CreateCommand())
+			{
+				command.CommandText = sqlCommand;
+				command.Transaction = Transaction;
+				command.ExecuteNonQuery();
+			}
 		}
-    }
+		catch (Exception e)
+        {
+			RollbackTransaction();
+			throw e;
+		}
+        finally
+        {
+			if (!KeepConnectionOpen)
+				Connection.Close();
+		}
+	}
 
     public DataTable ExecuteQuery(string sqlCommand)
     {
-        DataTable dataTable = new DataTable();
-
-        using (DbCommand command = Connection.CreateCommand())
+        try
         {
-            command.CommandText = sqlCommand;
+			if (Connection.State == ConnectionState.Closed)
+			{
+				Connection.Open();
+			}
+			DataTable dataTable = new DataTable();
 
-            using (DbDataReader reader = command.ExecuteReader())
-            {
-                dataTable.Load(reader);
-            }
-        }
+			using (DbCommand command = Connection.CreateCommand())
+			{
+				command.CommandText = sqlCommand;
+				command.Transaction = Transaction;
 
-        return dataTable;
+				using (DbDataReader reader = command.ExecuteReader())
+				{
+					dataTable.Load(reader);
+				}
+			}
+			return dataTable;
+		}
+        catch (Exception e)
+        {
+			RollbackTransaction();
+			throw e;
+		} 
+        finally
+        {
+			if (!KeepConnectionOpen)
+				Connection.Close();
+		}
     }
 
-    public bool CheckIfTableExists(string connectionString, string tableName)
+    public bool CheckIfTableExists(string tableName)
 	{
+        if (Connection.State == ConnectionState.Closed)
+        {
+            Connection.Open();
+        }
         using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", (MySqlConnection)Connection))
 		{
 			using (var reader = command.ExecuteReader())
 			{
-                return reader.HasRows;
+				if (!KeepConnectionOpen)
+					Connection.Close();
+				return reader.HasRows;
 			}
         }
 	}
 
-	public bool CheckTheLastRecord(string connectionString, string tableName, string columnName, string value)
+	public bool CheckTheLastRecord(string tableName, string columnName, string value)
 	{
+        if (Connection.State == ConnectionState.Closed)
+        {
+			Connection.Open();
+		}
         using (DbCommand command = new MySqlCommand($"SELECT {columnName} FROM {tableName} ORDER BY Id DESC LIMIT 1;", (MySqlConnection)Connection))
 		{
 			using (var reader = command.ExecuteReader())
@@ -66,10 +142,14 @@ internal class MySQL
 				if (reader.Read())
 				{
 					string columnValue = reader.GetString(0);
+					if (!KeepConnectionOpen)
+						Connection.Close();
 					return columnValue.Equals(value);
 				} 
 				else
 				{
+					if (!KeepConnectionOpen)
+						Connection.Close();
 					return false;
 				}
 			}
@@ -84,7 +164,7 @@ internal class MySQL
         }
 
         Connection.ChangeDatabase(DbName);
-    }
+	}
 
     private static bool DatabaseExists(DbConnection connection, string dbName)
     {
@@ -93,7 +173,7 @@ internal class MySQL
             command.CommandText = $"SHOW DATABASES LIKE '{dbName}'";
             using (var reader = command.ExecuteReader())
             {
-                return reader.HasRows;
+				return reader.HasRows;
             }
         }
     }
@@ -106,4 +186,9 @@ internal class MySQL
             command.ExecuteNonQuery();
         }
     }
+
+	public void Dispose()
+	{
+		Connection.Dispose();
+	}
 }

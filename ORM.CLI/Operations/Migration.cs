@@ -90,16 +90,16 @@ internal class Migration
 		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).First();
 		var connectionString = dataAccessProps.Properties.First(x => x.Name == "ConnectionString").Value;
 
-		Schema schema = new Schema(connectionString.ToString());
+		DbHandler dbHandler = new DbHandler(connectionString.ToString());
 
 		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).Last();
 		var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Snapshot)).Last();
 
-		if (schema.CheckIfTableExists("_MyORMMigrationsHistory"))
+		if (dbHandler.CheckIfTableExists("_MyORMMigrationsHistory"))
 		{
             bool doesExist = false;
 
-			if (!schema.CheckIfTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
+			if (!dbHandler.CheckIfTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
 				doesExist = true;
 			else
 			{
@@ -109,18 +109,18 @@ internal class Migration
 
             Console.WriteLine(snapshotProps.ClassName);
             var method = migrationProps.Methods.First(x => x.Name == methodName);
-            method.Invoke(migrationProps.Instance, new object[] { schema });
+            method.Invoke(migrationProps.Instance, new object[] { dbHandler });
 
             if (doesExist)
-                schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+                dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
         }
 		else
 		{
-			schema.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
-			schema.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+			dbHandler.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
+			dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
             
             var method = snapshotProps.Methods.First(x => x.Name == "CreateDBFromSnapshot");
-            method.Invoke(snapshotProps.Instance, new object[] { schema });
+            method.Invoke(snapshotProps.Instance, new object[] { dbHandler });
         }
     }
 }

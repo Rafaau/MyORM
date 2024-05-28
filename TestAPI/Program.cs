@@ -12,6 +12,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton<AccessLayer, AppAccessLayer>();
+builder.Services.AddSingleton<DbHandler>(provider =>
+	{
+		var accessLayer = provider.GetRequiredService<AccessLayer>();
+		return new DbHandler(accessLayer.ConnectionString, accessLayer.Options.KeepConnectionOpen);
+	}
+);
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
 var app = builder.Build();

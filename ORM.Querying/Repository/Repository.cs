@@ -11,19 +11,18 @@ namespace ORM.Querying;
 public class Repository<T> : IRepository<T> where T : new()
 {
     private Type Model { get; set; }
-    private Schema Schema { get; set; }
+    private DbHandler DbHandler { get; set; }
     private AttributeHelpers.ClassProps ModelProps { get; set; }
 
     private string OrderByColumn { get; set; } = string.Empty;
     private string WhereString { get; set; } = string.Empty;
     private string SelectColumns { get; set; } = "*";
 
-    public Repository(AccessLayer accessLayer)
+    public Repository(DbHandler dbHandler)
     {
         Model = typeof(T);
 
-        var connectionString = accessLayer.ConnectionString;
-        Schema = new Schema(connectionString);
+        DbHandler = dbHandler;
         ModelProps = AttributeHelpers.GetPropsByModel(Model);
     }
 
@@ -53,20 +52,20 @@ public class Repository<T> : IRepository<T> where T : new()
 
         var sql = $"INSERT INTO {ModelProps.TableName} ({string.Join(", ", columns)}) VALUES ({string.Join(", ", values)})";
 
-        Schema.Execute(sql);
+        DbHandler.Execute(sql);
     }
 
     public IEnumerable<T> Find()
     {
         var sql = $"SELECT {SelectColumns} FROM {ModelProps.TableName} {WhereString} {OrderByColumn}";
-        var result = Schema.Query(sql);
+        var result = DbHandler.Query(sql);
         return ConvertDataTable<T>(result);
     }
 
     public T? FindOne()
     {
         var sql = $"SELECT {SelectColumns} FROM {ModelProps.TableName} {WhereString} LIMIT 1";
-        var result = Schema.Query(sql);
+        var result = DbHandler.Query(sql);
         return ConvertDataTable<T>(result).FirstOrDefault();
     }
 
@@ -100,7 +99,7 @@ public class Repository<T> : IRepository<T> where T : new()
 
         string columnsString = string.Join(", ", columns);
         var sql = $"UPDATE {ModelProps.TableName} SET {columnsString} {WhereString}";
-        Schema.Execute(sql);
+        DbHandler.Execute(sql);
     }
 
     public void UpdateMany(T model)
@@ -128,13 +127,13 @@ public class Repository<T> : IRepository<T> where T : new()
 
 		string columnsString = string.Join(", ", columns);
 		var sql = $"UPDATE {ModelProps.TableName} SET {columnsString} {WhereString}";
-		Schema.Execute(sql);
+		DbHandler.Execute(sql);
 	}
 
     public void Delete()
     {
         var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
-        Schema.Execute(sql);
+        DbHandler.Execute(sql);
     }
 
     public void Delete(T model)
@@ -148,7 +147,7 @@ public class Repository<T> : IRepository<T> where T : new()
 		}
 
 		var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
-        Schema.Execute(sql);
+        DbHandler.Execute(sql);
     }
 
     public Repository<T> OrderBy(string columnName, string order = "ASC")
