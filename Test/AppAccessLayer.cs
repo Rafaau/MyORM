@@ -10,6 +10,8 @@ public class AppAccessLayer : AccessLayer
 	public override string ConnectionString => "Server=localhost;Database=orm;User Id=root;Password=password;";
 	public override Options Options => new()
 	{
+		EntitiesAssembly = "Test",
+		MigrationsAssembly = "Test",
 		KeepConnectionOpen = true
 	};
 }

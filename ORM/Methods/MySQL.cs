@@ -24,6 +24,8 @@ internal class MySQL : IDisposable
         Connection.Close();
     }
 
+	public void OpenConnection() => Connection.Open();
+
     public void CloseConnection() => Connection.Close();
 
     public void BeginTransaction()
@@ -51,7 +53,7 @@ internal class MySQL : IDisposable
 			Connection.Close();
 	}
 
-	public void ExecuteNonQuery(string sqlCommand)
+	public int ExecuteNonQuery(string sqlCommandText)
 	{
         try
         {
@@ -61,9 +63,9 @@ internal class MySQL : IDisposable
 			}
 			using (DbCommand command = Connection.CreateCommand())
 			{
-				command.CommandText = sqlCommand;
+				command.CommandText = sqlCommandText;
 				command.Transaction = Transaction;
-				command.ExecuteNonQuery();
+				return command.ExecuteNonQuery();
 			}
 		}
 		catch (Exception e)
@@ -78,7 +80,7 @@ internal class MySQL : IDisposable
 		}
 	}
 
-    public DataTable ExecuteQuery(string sqlCommand)
+    public DataTable ExecuteQuery(string sqlCommandText)
     {
         try
         {
@@ -90,7 +92,7 @@ internal class MySQL : IDisposable
 
 			using (DbCommand command = Connection.CreateCommand())
 			{
-				command.CommandText = sqlCommand;
+				command.CommandText = sqlCommandText;
 				command.Transaction = Transaction;
 
 				using (DbDataReader reader = command.ExecuteReader())

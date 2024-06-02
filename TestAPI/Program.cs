@@ -15,7 +15,7 @@ builder.Services.AddSingleton<AccessLayer, AppAccessLayer>();
 builder.Services.AddSingleton<DbHandler>(provider =>
 	{
 		var accessLayer = provider.GetRequiredService<AccessLayer>();
-		return new DbHandler(accessLayer.ConnectionString, accessLayer.Options.KeepConnectionOpen);
+		return new DbHandler(accessLayer);
 	}
 );
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

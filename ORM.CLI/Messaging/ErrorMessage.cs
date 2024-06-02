@@ -8,7 +8,8 @@ internal class ErrorMessage : Message
     {
         { "MissingMigrationName", "Missing the following arguments: Migration Name" },
         { "InvalidInput", "Invalid input" },
-        { "Exception", "An exception has been thrown: "}
+        { "Exception", "An exception has been thrown: "},
+        { "DataAccessLayerNotFound", "Class with DataAccessLayer attribute not found" },
     };
 }
 

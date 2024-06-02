@@ -28,16 +28,25 @@ internal class Migration
         _logger.LogInfo("BuildSucceeded", null);
     }
 
-	public void Create(string input, string currentDirectory = "")
+	public void Create(string input)
 	{
         _logger.LogInfo("CheckingDirectory", new[] { "Migrations" });
 
-		string directoryPath = Path.Combine(currentDirectory, "Migrations");
-		if (currentDirectory == "")
+		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer), "D:\\repos\\ORM\\Test\\obj").FirstOrDefault();
+		if (dataAccessProps == null)
 		{
-			currentDirectory = Directory.GetCurrentDirectory().Split('\\').Last();
-			directoryPath = "Migrations";
+			_logger.LogError("DataAccessLayerNotFound", null);
+			return;
 		}
+		var options = (Options)dataAccessProps.Properties.First(x => x.Name == "Options").Value;
+
+		string directoryPath = options.MigrationsAssembly == "" 
+			? Path.Combine(Directory.GetCurrentDirectory(), "Migrations")
+			: Path.Combine(options.GetMigrationsMainDirectory(), "Migrations");
+
+		string nameSpace = options.MigrationsAssembly == ""
+			? Directory.GetCurrentDirectory().Split('\\').Last()
+			: options.MigrationsAssembly;
 
 		if (!Directory.Exists(directoryPath))
 		{
@@ -46,7 +55,7 @@ internal class Migration
 			_logger.LogInfo("DirectoryCreated", new [] { Directory.GetCurrentDirectory() });
 		}
 
-		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity));
+		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity), options.GetEntitiesAssembly());
         _logger.LogInfo("ProcessingEntities", types.Select(x => x.ClassName).ToArray());
 
 		// SNAPSHOT
@@ -60,7 +69,7 @@ internal class Migration
 		string filepath = Path.Combine(directoryPath, filename);
 
 		_logger.LogInfo("ProducingMigration", null);
-		string content = MigrationFactory.ProduceMigrationContent(types, currentDirectory, $"M{timestamp}_{input}", File.Exists(snapshotFile) ? File.ReadAllText(snapshotFile) : "");
+		string content = MigrationFactory.ProduceMigrationContent(types, nameSpace, $"M{timestamp}_{input}", File.Exists(snapshotFile) ? File.ReadAllText(snapshotFile) : "");
 
 		using (var stream = File.CreateText(filepath))
 		{
@@ -69,13 +78,13 @@ internal class Migration
 
 		if (File.Exists(snapshotFile))
 		{
-			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
+			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, nameSpace);
 			File.WriteAllText(snapshotFile, snapshotContent);
 		}
 		else
 		{
 			_logger.LogInfo("CreatingSnapshot", new[] { "" });
-			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, currentDirectory);
+			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, nameSpace);
 			using (var snapshotStream = File.CreateText(snapshotFile))
 				snapshotStream.WriteLine(snapshotContent);
 			_logger.LogInfo("FileCreated", new[] { $"ModelSnapshot.cs in {directoryPath}" });
@@ -87,19 +96,26 @@ internal class Migration
 
 	public void ExecuteMigration(string methodName)
 	{
-		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).First();
+		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).FirstOrDefault();
+		if (dataAccessProps == null)
+		{
+			_logger.LogError("DataAccessLayerNotFound", null);
+			return;
+		}
+		var options = (Options)dataAccessProps.Properties.First(x => x.Name == "Options").Value;
+
 		var connectionString = dataAccessProps.Properties.First(x => x.Name == "ConnectionString").Value;
 
 		DbHandler dbHandler = new DbHandler(connectionString.ToString());
 
-		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration)).Last();
-		var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Snapshot)).Last();
+		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Migration), options.GetMigrationsAssembly()).Last();
+		var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(ORM.Attributes.Snapshot), options.GetMigrationsAssembly()).Last();
 
 		if (dbHandler.CheckIfTableExists("_MyORMMigrationsHistory"))
 		{
             bool doesExist = false;
 
-			if (!dbHandler.CheckIfTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
+			if (!dbHandler.CheckTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
 				doesExist = true;
 			else
 			{

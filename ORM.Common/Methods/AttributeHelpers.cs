@@ -50,12 +50,13 @@ public class AttributeHelpers
         public List<Type> ParameterTypes { get; set; }
     }
 
-    public static List<ClassProps> GetPropsByAttribute(Type attributeType)
+    public static List<ClassProps> GetPropsByAttribute(Type attributeType, string assemblyPath = "")
     {
         List<ClassProps> props = new List<ClassProps>();
-        string currentDirectory = Directory.GetCurrentDirectory() + "\\obj";
+        if (assemblyPath == "")
+			assemblyPath = Directory.GetCurrentDirectory() + "\\obj";
 
-        foreach (var file in Directory.EnumerateFiles(currentDirectory, "*.dll", SearchOption.AllDirectories))
+        foreach (var file in Directory.EnumerateFiles(assemblyPath, "*.dll", SearchOption.AllDirectories))
         {
             try
             {
