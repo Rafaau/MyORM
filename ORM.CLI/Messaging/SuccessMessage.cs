@@ -1,13 +1,13 @@
-﻿namespace CLI.Messaging;
+﻿namespace MyORM.CLI.Messaging;
 
 internal class SuccessMessage : Message
 {
-    public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Green;
+	public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Green;
 
-    public override Dictionary<string, string> MessageContent { get; } = new()
-    {
-        { "MigrationCreated", "Migration has been created successfully." },
-        { "MigrationApplied", "Migration has been applied successfully." },
-        { "MigrationReverted", "Migration has been reverted successfully." }
-    };
+	public override Dictionary<string, string> MessageContent { get; } = new()
+	{
+		{ "MigrationCreated", "Migration has been created successfully." },
+		{ "MigrationApplied", "Migration has been applied successfully." },
+		{ "MigrationReverted", "Migration has been reverted successfully." }
+	};
 }

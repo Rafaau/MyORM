@@ -1,5 +1,5 @@
-﻿using ORM;
-using ORM.Enums;
+﻿using MyORM.Enums;
+using MyORM.Attributes;
 
 namespace Test.Models;
 

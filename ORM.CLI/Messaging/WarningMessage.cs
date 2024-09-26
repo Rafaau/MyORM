@@ -1,11 +1,11 @@
-﻿namespace CLI.Messaging;
+﻿namespace MyORM.CLI.Messaging;
 
 internal class WarningMessage : Message
 {
-    public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Yellow;
+	public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Yellow;
 
-    public override Dictionary<string, string> MessageContent { get; } = new()
-    {
-    };
+	public override Dictionary<string, string> MessageContent { get; } = new()
+	{
+	};
 }
 

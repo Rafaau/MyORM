@@ -1,6 +1,6 @@
-using ORM.Abstract;
-using ORM.Attributes;
-using ORM.Models;
+using MyORM.Abstract;
+using MyORM.Attributes;
+using MyORM.Models;
 
 namespace Test.Migrations;
 

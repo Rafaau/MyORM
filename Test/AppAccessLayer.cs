@@ -1,5 +1,5 @@
-﻿using ORM.Abstract;
-using ORM.Attributes;
+﻿using MyORM.Abstract;
+using MyORM.Attributes;
 
 namespace Test;
 

@@ -1,6 +1,6 @@
-﻿using ORM.Models;
+﻿using MyORM.Models;
 
-namespace ORM.Abstract;
+namespace MyORM.Abstract;
 
 public abstract class AbstractSnapshot
 {

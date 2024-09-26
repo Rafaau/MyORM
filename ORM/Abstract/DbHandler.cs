@@ -1,7 +1,7 @@
-﻿using CLI.Methods;
+﻿using MyORM.Methods;
 using System.Data;
 
-namespace ORM.Abstract;
+namespace MyORM.Abstract;
 
 /// <summary>
 /// Class that handles the database connection and operations.
@@ -9,19 +9,19 @@ namespace ORM.Abstract;
 public class DbHandler
 {
 	public string ConnectionString { get; set; }
-    private MySQL MySQL { get; set; }
-    private bool KeepConnectionOpen { get; set; } = false;
+	private MySQL MySQL { get; set; }
+	private bool KeepConnectionOpen { get; set; } = false;
 
-    /// <summary>
-    /// Constructor that initializes the connection string and the MySQL object.
-    /// </summary>
-    /// <param name="accessLayer"><c>AccessLayer</c> instance.</param>
-    public DbHandler(AccessLayer accessLayer)
-    {
-        ConnectionString = accessLayer.ConnectionString;
+	/// <summary>
+	/// Constructor that initializes the connection string and the MySQL object.
+	/// </summary>
+	/// <param name="accessLayer"><c>AccessLayer</c> instance.</param>
+	public DbHandler(AccessLayer accessLayer)
+	{
+		ConnectionString = accessLayer.ConnectionString;
 		KeepConnectionOpen = accessLayer.Options.KeepConnectionOpen;
 		MySQL = new MySQL(ConnectionString, KeepConnectionOpen);
-    }
+	}
 
 	/// <summary>
 	/// Constructor that initializes the connection string and the MySQL object.
@@ -35,43 +35,43 @@ public class DbHandler
 
 	public void OpenConnection() => MySQL.OpenConnection();
 
-    public void CloseConnection() => MySQL.CloseConnection();
+	public void CloseConnection() => MySQL.CloseConnection();
 
-    public void BeginTransaction()
-    {
+	public void BeginTransaction()
+	{
 		MySQL.BeginTransaction();
 	}
 
-    public void CommitTransaction()
-    {
-        MySQL.CommitTransaction();
-    }
+	public void CommitTransaction()
+	{
+		MySQL.CommitTransaction();
+	}
 
-    public int Execute(string sqlCommandText)
-	{   
-        Console.WriteLine(sqlCommandText);
-        return MySQL.ExecuteNonQuery(sqlCommandText);
-    }
+	public int Execute(string sqlCommandText)
+	{
+		Console.WriteLine(sqlCommandText);
+		return MySQL.ExecuteNonQuery(sqlCommandText);
+	}
 
-    public void ExecuteWithTransaction(string sqlCommandText)
-    {
+	public void ExecuteWithTransaction(string sqlCommandText)
+	{
 		BeginTransaction();
 		Execute(sqlCommandText);
 		CommitTransaction();
 	}
 
-    public DataTable Query(string sqlCommandText)
-    {
-        return MySQL.ExecuteQuery(sqlCommandText);
-    }
+	public DataTable Query(string sqlCommandText)
+	{
+		return MySQL.ExecuteQuery(sqlCommandText);
+	}
 
-    public bool CheckIfTableExists(string tableName)
-    {
+	public bool CheckIfTableExists(string tableName)
+	{
 		return MySQL.CheckIfTableExists(tableName);
 	}
 
-    public bool CheckTheLastRecord(string tableName, string columnName, string value)
-    {
-        return MySQL.CheckTheLastRecord(tableName, columnName, value);
-    }
+	public bool CheckTheLastRecord(string tableName, string columnName, string value)
+	{
+		return MySQL.CheckTheLastRecord(tableName, columnName, value);
+	}
 }

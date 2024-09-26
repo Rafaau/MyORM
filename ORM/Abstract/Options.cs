@@ -1,4 +1,4 @@
-﻿namespace ORM.Abstract;
+﻿namespace MyORM.Abstract;
 
 public class Options
 {
@@ -8,22 +8,16 @@ public class Options
 
 	public string GetEntitiesAssembly()
 	{
-		var currentDirectory = Directory.GetCurrentDirectory().Split('\\');
-		currentDirectory[^4] = this.EntitiesAssembly;
-		return string.Join('\\', currentDirectory.Take(currentDirectory.Length - 3)) + "\\obj";
+		return Directory.GetParent(Directory.GetCurrentDirectory())!.FullName + "\\" + EntitiesAssembly + "\\obj";
 	}
 
 	public string GetMigrationsAssembly()
 	{
-		var currentDirectory = Directory.GetCurrentDirectory().Split('\\');
-		currentDirectory[^4] = this.MigrationsAssembly;
-		return string.Join('\\', currentDirectory.Take(currentDirectory.Length - 3)) + "\\obj";
+		return Directory.GetParent(Directory.GetCurrentDirectory())!.FullName + "\\" + MigrationsAssembly + "\\obj";
 	}
 
 	public string GetMigrationsMainDirectory()
 	{
-		var currentDirectory = Directory.GetCurrentDirectory().Split('\\');
-		currentDirectory[^4] = this.MigrationsAssembly;
-		return string.Join('\\', currentDirectory.Take(currentDirectory.Length - 3));
+		return Directory.GetParent(Directory.GetCurrentDirectory())!.FullName + "\\" + MigrationsAssembly;
 	}
 }

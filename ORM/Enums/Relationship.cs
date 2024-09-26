@@ -1,4 +1,4 @@
-﻿namespace ORM.Enums
+﻿namespace MyORM.Enums
 {
 	public enum Relationship
 	{

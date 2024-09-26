@@ -1,9 +1,9 @@
-﻿using ORM.Querying.Functions;
+﻿using MyORM.Querying.Functions;
 using System.Collections;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace ORM.Querying.Abstract;
+namespace MyORM.Querying.Abstract;
 
 public static class Parameters<T> where T : new()
 {
@@ -28,22 +28,22 @@ public static class Parameters<T> where T : new()
 
 public class ExtendedDictionary : IEnumerable<KeyValuePair<string, List<object>>>
 {
-private readonly Dictionary<string, List<object>> _internalDict = new();
+	private readonly Dictionary<string, List<object>> _internalDict = new();
 
-public void Add(string key, params object[] values)
-{
-    _internalDict[key] = new List<object>(values);
-}
+	public void Add(string key, params object[] values)
+	{
+		_internalDict[key] = new List<object>(values);
+	}
 
-public IEnumerable<object> this[string key] => _internalDict[key];
+	public IEnumerable<object> this[string key] => _internalDict[key];
 
-public IEnumerator<KeyValuePair<string, List<object>>> GetEnumerator()
-{
-    return _internalDict.GetEnumerator();
-}
+	public IEnumerator<KeyValuePair<string, List<object>>> GetEnumerator()
+	{
+		return _internalDict.GetEnumerator();
+	}
 
-IEnumerator IEnumerable.GetEnumerator()
-{
-    return _internalDict.GetEnumerator();
-}
+	IEnumerator IEnumerable.GetEnumerator()
+	{
+		return _internalDict.GetEnumerator();
+	}
 }

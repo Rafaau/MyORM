@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Text;
 
-namespace ORM.Querying.Functions;
+namespace MyORM.Querying.Functions;
 
 internal static class ExpressionExtractor
 {

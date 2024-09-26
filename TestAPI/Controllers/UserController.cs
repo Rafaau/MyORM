@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using ORM.Querying;
-using ORM.Querying.Abstract;
+using MyORM.Querying.Abstract;
 using Test.Models;
 using TestAPI.DTO;
-using ORM.Projection;
-using ORM.Abstract;
+using MyORM.Abstract;
+using MyORM.Projectioner.Methods;
+using MyORM.Querying.Repository;
 
 namespace TestAPI.Controllers
 {

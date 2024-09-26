@@ -1,5 +1,5 @@
-using ORM.Abstract;
-using ORM.Querying;
+using MyORM.Abstract;
+using MyORM.Querying.Repository;
 using Test;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -9,9 +9,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ORM.Projection\ORM.Projectioner.csproj" />
-    <ProjectReference Include="..\ORM.Querying\ORM.Querying.csproj" />
-    <ProjectReference Include="..\ORM.Specifications\ORM.Specifications.csproj" />
+    <ProjectReference Include="..\ORM.Projection\MyORM.Projectioner.csproj" />
+    <ProjectReference Include="..\ORM.Querying\MyORM.Querying.csproj" />
+    <ProjectReference Include="..\ORM.Specifications\MyORM.Specifications.csproj" />
     <ProjectReference Include="..\Test\Test.csproj" />
   </ItemGroup>
 </Project>

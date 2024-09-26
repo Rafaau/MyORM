@@ -1,12 +1,12 @@
 ﻿using System.Diagnostics;
-using CLI.Messaging;
-using CLI.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using static System.Net.Mime.MediaTypeNames;
+using MyORM.CLI.Messaging.Interfaces;
+using MyORM.CLI.Messaging.Services;
+using MyORM.CLI.Operations;
 
 // 1. dotnet pack
-// 2. dotnet tool install / update --global --add-source ./nupkg orm.cli
+// 2. dotnet tool install / update --global --add-source ./nupkg MyORM.CLI
 public class Program
 {
     private static void Main(string[] args)
@@ -32,7 +32,7 @@ public class Program
 
         if (command.StartsWith("test"))
         {
-			migration.Create("Test1", "D:\\repos\\ORM\\Test");
+			migration.Create("Test1");
 			logger.LogSuccess("MigrationCreated");
 		}
         if (command.StartsWith("migration:create"))
@@ -41,8 +41,15 @@ public class Program
                 logger.LogError("MissingMigrationName");
 			else
 			{
-				migration.Create(args[1]);
-                logger.LogSuccess("MigrationCreated");
+                try
+                {
+					migration.Create(args[1]);
+					logger.LogSuccess("MigrationCreated");
+				}
+				catch (Exception e)
+                {
+                    logger.LogInfo(e.Message);
+                }
             }
 
         }

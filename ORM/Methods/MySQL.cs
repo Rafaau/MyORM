@@ -2,51 +2,51 @@
 using MySql.Data.MySqlClient;
 using System.Data.Common;
 
-namespace CLI.Methods;
+namespace MyORM.Methods;
 internal class MySQL : IDisposable
 {
 	private DbConnection Connection { get; set; }
-    private MySqlConnectionStringBuilder Builder { get; set; }
+	private MySqlConnectionStringBuilder Builder { get; set; }
 	private string DbName { get; set; }
-    private DbTransaction? Transaction { get; set; }
-    private bool KeepConnectionOpen { get; set; }
+	private DbTransaction? Transaction { get; set; }
+	private bool KeepConnectionOpen { get; set; }
 
-    public MySQL(string connectionString, bool keepConnectionOpen)
-    {
-        Builder = new MySqlConnectionStringBuilder(connectionString);
-        DbName = Builder.Database;
+	public MySQL(string connectionString, bool keepConnectionOpen)
+	{
+		Builder = new MySqlConnectionStringBuilder(connectionString);
+		DbName = Builder.Database;
 		Builder.Database = "";
-        KeepConnectionOpen = keepConnectionOpen;
+		KeepConnectionOpen = keepConnectionOpen;
 
 		Connection = new MySqlConnection(Builder.ConnectionString);
-        Connection.Open();
-        CheckDatabase();
-        Connection.Close();
-    }
+		Connection.Open();
+		CheckDatabase();
+		Connection.Close();
+	}
 
 	public void OpenConnection() => Connection.Open();
 
-    public void CloseConnection() => Connection.Close();
+	public void CloseConnection() => Connection.Close();
 
-    public void BeginTransaction()
-    {
-        if (Connection.State == ConnectionState.Closed)
-        {
+	public void BeginTransaction()
+	{
+		if (Connection.State == ConnectionState.Closed)
+		{
 			Connection.Open();
 		}
 		Transaction = Connection.BeginTransaction();
 	}
 
-    public void CommitTransaction()
-    {
+	public void CommitTransaction()
+	{
 		Transaction?.Commit();
 		Transaction = null;
-        if (!KeepConnectionOpen)
-            Connection.Close();
+		if (!KeepConnectionOpen)
+			Connection.Close();
 	}
 
 	public void RollbackTransaction()
-    {
+	{
 		Transaction?.Rollback();
 		Transaction = null;
 		if (!KeepConnectionOpen)
@@ -55,8 +55,8 @@ internal class MySQL : IDisposable
 
 	public int ExecuteNonQuery(string sqlCommandText)
 	{
-        try
-        {
+		try
+		{
 			if (Connection.State == ConnectionState.Closed)
 			{
 				Connection.Open();
@@ -69,21 +69,21 @@ internal class MySQL : IDisposable
 			}
 		}
 		catch (Exception e)
-        {
+		{
 			RollbackTransaction();
 			throw e;
 		}
-        finally
-        {
+		finally
+		{
 			if (!KeepConnectionOpen)
 				Connection.Close();
 		}
 	}
 
-    public DataTable ExecuteQuery(string sqlCommandText)
-    {
-        try
-        {
+	public DataTable ExecuteQuery(string sqlCommandText)
+	{
+		try
+		{
 			if (Connection.State == ConnectionState.Closed)
 			{
 				Connection.Open();
@@ -102,25 +102,25 @@ internal class MySQL : IDisposable
 			}
 			return dataTable;
 		}
-        catch (Exception e)
-        {
+		catch (Exception e)
+		{
 			RollbackTransaction();
 			throw e;
-		} 
-        finally
-        {
+		}
+		finally
+		{
 			if (!KeepConnectionOpen)
 				Connection.Close();
 		}
-    }
+	}
 
-    public bool CheckIfTableExists(string tableName)
+	public bool CheckIfTableExists(string tableName)
 	{
-        if (Connection.State == ConnectionState.Closed)
-        {
-            Connection.Open();
-        }
-        using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", (MySqlConnection)Connection))
+		if (Connection.State == ConnectionState.Closed)
+		{
+			Connection.Open();
+		}
+		using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", (MySqlConnection)Connection))
 		{
 			using (var reader = command.ExecuteReader())
 			{
@@ -128,16 +128,16 @@ internal class MySQL : IDisposable
 					Connection.Close();
 				return reader.HasRows;
 			}
-        }
+		}
 	}
 
 	public bool CheckTheLastRecord(string tableName, string columnName, string value)
 	{
-        if (Connection.State == ConnectionState.Closed)
-        {
+		if (Connection.State == ConnectionState.Closed)
+		{
 			Connection.Open();
 		}
-        using (DbCommand command = new MySqlCommand($"SELECT {columnName} FROM {tableName} ORDER BY Id DESC LIMIT 1;", (MySqlConnection)Connection))
+		using (DbCommand command = new MySqlCommand($"SELECT {columnName} FROM {tableName} ORDER BY Id DESC LIMIT 1;", (MySqlConnection)Connection))
 		{
 			using (var reader = command.ExecuteReader())
 			{
@@ -147,7 +147,7 @@ internal class MySQL : IDisposable
 					if (!KeepConnectionOpen)
 						Connection.Close();
 					return columnValue.Equals(value);
-				} 
+				}
 				else
 				{
 					if (!KeepConnectionOpen)
@@ -156,38 +156,38 @@ internal class MySQL : IDisposable
 				}
 			}
 		}
-    }
-
-    private void CheckDatabase()
-    {
-        if (!DatabaseExists(Connection, DbName))
-        {
-            CreateDatabase(Connection, DbName);
-        }
-
-        Connection.ChangeDatabase(DbName);
 	}
 
-    private static bool DatabaseExists(DbConnection connection, string dbName)
-    {
-        using (DbCommand command = connection.CreateCommand())
-        {
-            command.CommandText = $"SHOW DATABASES LIKE '{dbName}'";
-            using (var reader = command.ExecuteReader())
-            {
-				return reader.HasRows;
-            }
-        }
-    }
+	private void CheckDatabase()
+	{
+		if (!DatabaseExists(Connection, DbName))
+		{
+			CreateDatabase(Connection, DbName);
+		}
 
-    private static void CreateDatabase(DbConnection connection, string dbName)
-    {
-        using (DbCommand command = connection.CreateCommand())
-        {
-            command.CommandText = $"CREATE DATABASE {dbName};";
-            command.ExecuteNonQuery();
-        }
-    }
+		Connection.ChangeDatabase(DbName);
+	}
+
+	private static bool DatabaseExists(DbConnection connection, string dbName)
+	{
+		using (DbCommand command = connection.CreateCommand())
+		{
+			command.CommandText = $"SHOW DATABASES LIKE '{dbName}'";
+			using (var reader = command.ExecuteReader())
+			{
+				return reader.HasRows;
+			}
+		}
+	}
+
+	private static void CreateDatabase(DbConnection connection, string dbName)
+	{
+		using (DbCommand command = connection.CreateCommand())
+		{
+			command.CommandText = $"CREATE DATABASE {dbName};";
+			command.ExecuteNonQuery();
+		}
+	}
 
 	public void Dispose()
 	{

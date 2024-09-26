@@ -1,4 +1,4 @@
-﻿namespace ORM.Abstract;
+﻿namespace MyORM.Abstract;
 
 public abstract class AccessLayer
 {

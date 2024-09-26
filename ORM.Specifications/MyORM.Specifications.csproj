@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ORM.Common\ORM.Common.csproj" />
-    <ProjectReference Include="..\ORM\ORM.csproj" />
+    <ProjectReference Include="..\ORM.Common\MyORM.Common.csproj" />
+    <ProjectReference Include="..\ORM\MyORM.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-﻿namespace ORM.Projection;
+﻿namespace MyORM.Projectioner.Methods;
 
 public static class ProjectionHelper
 {
