@@ -37,6 +37,19 @@ internal abstract class Message
 		Console.WriteLine("");
 	}
 
+	public virtual void InvokeErrorMessage(Exception exception)
+	{
+		Console.ForegroundColor = ConsoleColor.White;
+		Console.BackgroundColor = ConsoleColor.Red;
+		Console.WriteLine("");
+		Console.WriteLine("");
+		Console.WriteLine($"{exception.Message}");
+		Console.WriteLine($"{exception.StackTrace}");
+		Console.WriteLine($"{exception.Source}");
+		Console.ResetColor();
+		Console.WriteLine("");
+	}
+
 	public abstract Dictionary<string, string> MessageContent { get; }
 }
 

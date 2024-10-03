@@ -116,18 +116,24 @@ internal class MySQL : IDisposable
 
 	public bool CheckIfTableExists(string tableName)
 	{
-		if (Connection.State == ConnectionState.Closed)
+		try
 		{
-			Connection.Open();
-		}
-		using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", (MySqlConnection)Connection))
-		{
-			using (var reader = command.ExecuteReader())
+			if (Connection.State == ConnectionState.Closed)
 			{
-				if (!KeepConnectionOpen)
-					Connection.Close();
-				return reader.HasRows;
+				Connection.Open();
 			}
+			using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", (MySqlConnection)Connection))
+			{
+				using (var reader = command.ExecuteReader())
+				{
+					return reader.HasRows;
+				}
+			}
+		}
+		finally
+		{
+			if (!KeepConnectionOpen)
+				Connection.Close();
 		}
 	}
 

@@ -98,7 +98,11 @@ internal static class MigrationFactory
 		int index = 1;
 
 		var properties =
-			type.Properties.Where(x => x.Attributes.Any(attribute => !attribute.FullName.Contains("OneToOne")));
+			type.Properties.Where(x => x.Attributes.Any(attribute => 
+			!attribute.FullName!.Contains("OneToOne") &&
+			!attribute.FullName!.Contains("ManyToOne") &&
+			!attribute.FullName!.Contains("OneToMany")
+		));
 
 
 		foreach (var prop in properties)
@@ -122,13 +126,22 @@ internal static class MigrationFactory
 		string propsString = "";
 		int index = 1;
 
-		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName.Contains("OneToOne"))))
+		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => 
+			x.FullName!.Contains("OneToOne") ||
+			x.FullName!.Contains("ManyToOne")))
+		)
 		{
-			var relationshipAttr = prop.AttributeProps.FirstOrDefault(x => x.Key == "Relationship").Value;
-			Relationship relationship = relationshipAttr != null ? (Relationship)relationshipAttr : Relationship.Mandatory;
-			string relationshipString = relationship == Relationship.Optional ? "NULL" : "NOT NULL";
+			string relationshipString = GetRelationship(prop) == Relationship.Optional 
+				? "NULL" 
+				: "NOT NULL, " +
+				$"ADD FOREIGN KEY ({prop.Name}Id) " +
+				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
+				(GetCascadeOption(prop) ? " ON DELETE CASCADE" : "");
 
-			propsString += $"ADD {prop.Name}Id INT UNIQUE {relationshipString}, ADD FOREIGN KEY ({prop.Name}Id) REFERENCES {prop.ParentClass.TableName}(Id)";
+			string unique = !prop.Attributes.Any(x => x.FullName!.Contains("ManyToOne")) ? " UNIQUE" : "";
+
+			propsString += $"ADD {prop.Name}Id INT{unique} {relationshipString}";
+				
 		}
 
 		content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
@@ -165,7 +178,18 @@ internal static class MigrationFactory
 		if (prop.Attributes.Select(x => x.Name).Contains("PrimaryGeneratedColumn"))
 			content += $"{prop.Name} INT AUTO_INCREMENT NOT NULL, PRIMARY KEY ({prop.Name})";
 		else if (prop.Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
-			content += $"{prop.ColumnName} INT UNIQUE, {(operation == Operation.Alter ? "ADD" : "")} FOREIGN KEY ({prop.ColumnName}) REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
+		{
+			string relationshipString = GetRelationship(prop) == Relationship.Optional
+				? "NULL"
+				: "NOT NULL, " +
+				$"ADD FOREIGN KEY ({prop.Name}Id) " +
+				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
+				(GetCascadeOption(prop) ? " ON DELETE CASCADE" : "");
+
+			content += $"{prop.ColumnName} INT UNIQUE {relationshipString}";
+		}
+		else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToOne"))
+			content += $"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} FOREIGN KEY ({prop.ColumnName}) REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
 		else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{
 			switch (prop.Type.ToString())
@@ -195,7 +219,7 @@ internal static class MigrationFactory
 		string propsString = "";
 		int index = 1;
 
-		foreach (var prop in type.Properties)
+		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(y => y.FullName!.Contains("OneToMany"))))
 		{
 			if (!modelStatement.Columns.Any(x => x.Name == prop.Name))
 			{
@@ -243,6 +267,30 @@ internal static class MigrationFactory
 			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
 
 		return content;
+	}
+
+	private static bool GetCascadeOption(AttributeHelpers.Property property)
+	{
+		bool cascade = false;
+
+		var baseProps = AttributeHelpers.GetPropsByModel(property.Type);
+
+		var cascadeAttr = baseProps.Properties
+			.Find(x => x.Type.Name == property.ParentClass.ClassName)?.AttributeProps?
+			.FirstOrDefault(x => x.Key == "Cascade").Value;
+
+        if (cascadeAttr != null)
+		{
+			cascade = (bool)cascadeAttr;
+		}
+			
+		return cascade;
+	}
+
+	private static Relationship GetRelationship(AttributeHelpers.Property property)
+	{
+		var relationshipAttr = property.AttributeProps.FirstOrDefault(x => x.Key == "Relationship").Value;
+		return relationshipAttr != null ? (Relationship)relationshipAttr : Relationship.Mandatory;
 	}
 
 	private enum Method

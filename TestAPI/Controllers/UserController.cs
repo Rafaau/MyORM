@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using MyORM.Querying.Abstract;
 using Test.Models;
 using TestAPI.DTO;
 using MyORM.Abstract;

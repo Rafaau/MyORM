@@ -36,7 +36,9 @@ public class AttributeHelpers
 		{
 			get
 			{
-				if (Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
+				string attr = Attributes.Select(x => x.Name).SingleOrDefault();
+				if (attr.Contains("OneToOne") 
+					|| attr.Contains("ManyToOne"))
 					return $"{Name}Id";
 				else
 					return Name;
@@ -99,7 +101,7 @@ public class AttributeHelpers
 									.Select(x => x.GetType())
 									.ToList(),
 								AttributeProps = attributeProps,
-								ParentClass = props.Last(),
+								ParentClass = GetPropsByModel(type)
 							});
 						}
 
@@ -139,6 +141,15 @@ public class AttributeHelpers
 
 			foreach (var property in model.GetProperties())
 			{
+				Dictionary<string, object> attributeProps = new();
+				foreach (var attr in property.GetCustomAttributes())
+				{
+					foreach (var prop in attr.GetType().GetProperties())
+					{
+						attributeProps.Add(prop.Name, prop.GetValue(attr));
+					}
+				}
+
 				props.Properties.Add(new Property()
 				{
 					Name = property.Name,
@@ -149,6 +160,7 @@ public class AttributeHelpers
 						.ToArray()
 						.Select(x => x.GetType())
 						.ToList(),
+					AttributeProps = attributeProps,
 					ParentClass = props,
 				});
 			}

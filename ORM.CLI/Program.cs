@@ -38,7 +38,7 @@ public class Program
         if (command.StartsWith("migration:create"))
         {
             if (args.Length < 2)
-                logger.LogError("MissingMigrationName");
+                logger.LogError("Missing Migration Name");
 			else
 			{
                 try
@@ -48,7 +48,7 @@ public class Program
 				}
 				catch (Exception e)
                 {
-                    logger.LogInfo(e.Message);
+                    logger.LogInfo($"{e.Message}\n {e.Source}\n {e.StackTrace}");
                 }
             }
 
@@ -77,7 +77,7 @@ public class Program
         }
         else
         {
-            logger.LogError("InvalidInput");
+            logger.LogError("Invalid Input");
         }
     }
 }

@@ -14,5 +14,12 @@ public class Account
 
     [OneToOne<User>(Relationship.Mandatory)]
     public User User { get; set; }
+
+    [OneToMany<Post>(Relationship.Optional)]
+    public List<Post> Posts { get; set; }
+
+    public Account()
+    {
+	}
 }
 

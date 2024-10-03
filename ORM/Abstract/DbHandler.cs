@@ -9,6 +9,7 @@ namespace MyORM.Abstract;
 public class DbHandler
 {
 	public string ConnectionString { get; set; }
+	public AccessLayer AccessLayer { get; set; }
 	private MySQL MySQL { get; set; }
 	private bool KeepConnectionOpen { get; set; } = false;
 
@@ -18,6 +19,7 @@ public class DbHandler
 	/// <param name="accessLayer"><c>AccessLayer</c> instance.</param>
 	public DbHandler(AccessLayer accessLayer)
 	{
+		AccessLayer = accessLayer;
 		ConnectionString = accessLayer.ConnectionString;
 		KeepConnectionOpen = accessLayer.Options.KeepConnectionOpen;
 		MySQL = new MySQL(ConnectionString, KeepConnectionOpen);

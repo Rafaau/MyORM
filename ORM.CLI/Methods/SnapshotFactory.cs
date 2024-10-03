@@ -44,12 +44,14 @@ internal static class SnapshotFactory
 
 	private static string GenerateModelStatement(this string content, AttributeHelpers.ClassProps type)
 	{
-		string model = $"new ModelStatement(\"{type.ClassName}\", \"{type.ClassName}\", new List<ColumnStatement>()\r\n\t\t{{";
+		string model = $"new ModelStatement(\"{type.ClassName}\", \"{type.TableName}\", new List<ColumnStatement>()\r\n\t\t{{";
 
-		foreach (var prop in type.Properties)
+		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(y => y.FullName.Contains("OneToMany"))))
 		{
-			bool isRelational = prop.Attributes.Any(attribute => attribute.FullName.Contains("OneToOne"));
-			int index = isRelational ? 2 : 1;
+			bool isRelational = prop.Attributes.Any(attribute =>
+				attribute.FullName!.Contains("OneToOne"));
+
+			int index = isRelational ? 3 : 1;
 			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
 		}
 

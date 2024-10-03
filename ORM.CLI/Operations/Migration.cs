@@ -22,7 +22,7 @@ internal class Migration
 		}
 		catch (Exception e)
 		{
-			_logger.LogError(e.Message);
+			_logger.LogError(e);
 			return;
 		}
 		_logger.LogInfo("BuildSucceeded", null);
@@ -95,49 +95,72 @@ internal class Migration
 		_logger.LogInfo("Done", null);
 	}
 
-	public void ExecuteMigration(string methodName)
+	public async void ExecuteMigration(string methodName)
 	{
-		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).FirstOrDefault();
-		if (dataAccessProps == null)
+		try
 		{
-			_logger.LogError("DataAccessLayerNotFound", null);
-			return;
-		}
-		var options = (Options)dataAccessProps.Properties.First(x => x.Name == "Options").Value;
-
-		var connectionString = dataAccessProps.Properties.First(x => x.Name == "ConnectionString").Value;
-
-		DbHandler dbHandler = new DbHandler(connectionString.ToString());
-
-		var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(Attributes.Migration), options.GetMigrationsAssembly()).Last();
-		var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(Snapshot), options.GetMigrationsAssembly()).Last();
-
-		if (dbHandler.CheckIfTableExists("_MyORMMigrationsHistory"))
-		{
-			bool doesExist = false;
-
-			if (!dbHandler.CheckTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
-				doesExist = true;
-			else
+			var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).FirstOrDefault();
+			if (dataAccessProps == null)
 			{
-				Console.WriteLine($"{(methodName == "Up" ? "Provided migration already executed" : "Provided migration already reverted")}");
-				return;
+				throw new Exception("DataAccessLayer not found");
 			}
 
-			Console.WriteLine(snapshotProps.ClassName);
-			var method = migrationProps.Methods.First(x => x.Name == methodName);
-			method.Invoke(migrationProps.Instance, new object[] { dbHandler });
+			var options = (Options)dataAccessProps.Properties.Find(x => x.Name == "Options").Value;
 
-			if (doesExist)
-				dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+			var connectionString = dataAccessProps.Properties.Find(x => x.Name == "ConnectionString")!.Value;
+
+			DbHandler dbHandler = new DbHandler(connectionString.ToString());
+
+			var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(Attributes.Migration), options.GetMigrationsAssembly()).LastOrDefault();
+			var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(Snapshot), options.GetMigrationsAssembly()).LastOrDefault();
+
+			if (dbHandler.CheckIfTableExists("_MyORMMigrationsHistory"))
+			{
+				if (migrationProps == null)
+				{
+					throw new Exception("Migration not found");
+				}
+
+				bool doesExist = false;
+
+				if (migrationProps != null 
+					&& !dbHandler.CheckTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
+				{
+					doesExist = true;
+				}
+				else
+				{
+					Console.WriteLine($"{(methodName == "Up" ? "Provided migration already executed" : "Provided migration already reverted")}");
+					return;
+				}
+
+				var method = migrationProps.Methods.First(x => x.Name == methodName);
+				method.Invoke(migrationProps.Instance, new object[] { dbHandler });
+
+				if (doesExist)
+					dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+			}
+			else
+			{
+				if (snapshotProps == null)
+				{
+					throw new Exception("Snapshot not found");
+				}
+
+				if (migrationProps != null)
+				{
+					dbHandler.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
+					dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+				}
+
+				var method = snapshotProps.Methods.First(x => x.Name == "CreateDBFromSnapshot");
+				method.Invoke(snapshotProps.Instance, [dbHandler]);
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			dbHandler.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
-			dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
-
-			var method = snapshotProps.Methods.First(x => x.Name == "CreateDBFromSnapshot");
-			method.Invoke(snapshotProps.Instance, new object[] { dbHandler });
+			_logger.LogError(e);
+			return;
 		}
 	}
 }

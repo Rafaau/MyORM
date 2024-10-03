@@ -15,7 +15,7 @@ public class User
 	[Column]
 	public string Email { get; set; }
 
-	[OneToOne<Account>(Relationship.Optional)]
+	[OneToOne<Account>(relationship: Relationship.Optional, cascade: true)]
 	public Account Account { get; set; }
 
     public User()

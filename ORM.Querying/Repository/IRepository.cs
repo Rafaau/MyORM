@@ -3,9 +3,9 @@ using System.Linq.Expressions;
 
 namespace MyORM.Querying.Repository;
 
-public interface IRepository<T> where T : new()
+public interface IRepository<T> where T : class, new()
 {
-	void Create(T model);
+	int Create(T model);
 	void Update(T model);
 	void UpdateMany(T model);
 	void Delete(T model);
