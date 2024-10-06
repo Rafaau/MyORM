@@ -1,4 +1,5 @@
-﻿using MyORM.Querying.Functions;
+﻿using MyORM.Models;
+using MyORM.Querying.Functions;
 using System.Collections;
 using System.Linq.Expressions;
 using System.Text;
@@ -19,9 +20,9 @@ public static class Parameters<T> where T : new()
 		return $"ORDER BY {columnName} {order}";
 	}
 
-	public static string GetSelectString<TResult>(Expression<Func<T, TResult>> selector)
+	public static string GetSelectString<TResult>(Expression<Func<T, TResult>> selector, List<ModelStatement> statementsList)
 	{
-		var names = ExpressionExtractor.ExtractPropertyNames(selector);
+		var names = ExpressionExtractor.ExtractPropertyNames(selector, statementsList);
 		return string.Join(", ", names);
 	}
 }

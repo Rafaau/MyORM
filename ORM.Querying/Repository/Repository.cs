@@ -20,7 +20,15 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 	private string OrderByColumn { get; set; } = string.Empty;
 	private string WhereString { get; set; } = string.Empty;
-	private string SelectColumns { get; set; } = "*";
+	private string SelectColumns { get; set; } = string.Empty;
+	private List<string> AllColumnsList { get; set; } = new();
+	private string AllColumnsString
+	{
+		get
+		{
+			return string.Join(", ", AllColumnsList);
+		}
+	}
 
 	public Repository(DbHandler dbHandler)
 	{
@@ -48,14 +56,28 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 	public IEnumerable<T> Find()
 	{
-		return FindWithNestedRelations<T>(ModelProps, null);
+		string join = FindAllRelations(ModelProps, null);
+		string selectColumns = SelectColumns.Length > 0 
+			? SelectColumns
+			: AllColumnsString;
+
+		var sql = $"SELECT {selectColumns} FROM {ModelProps.TableName} {join} {WhereString} {OrderByColumn}";
+		var result = DbHandler.Query(sql);
+		var data = MapData<T>(result);
+		return data;
 	}
 
 	public T? FindOne()
 	{
-		var sql = $"SELECT {SelectColumns} FROM {ModelProps.TableName} {WhereString} LIMIT 1";
+		string join = FindAllRelations(ModelProps, null);
+		string selectColumns = SelectColumns.Length > 0
+			? SelectColumns
+			: AllColumnsString;
+
+		var sql = $"SELECT {selectColumns} FROM {ModelProps.TableName} {join} {WhereString} {OrderByColumn} LIMIT 1";
 		var result = DbHandler.Query(sql);
-		return ConvertDataTable<T>(result).FirstOrDefault();
+		var data = MapData<T>(result);
+		return data.FirstOrDefault();
 	}
 
 	public void Update(T model)
@@ -153,16 +175,30 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 	public Repository<T> Select<TResult>(Expression<Func<T, TResult>> selector)
 	{
-		SelectColumns = Parameters<T>.GetSelectString(selector);
+		SelectColumns = Parameters<T>.GetSelectString(selector, StatementList);
 		return this;
 	}
 
-	private IEnumerable<S> FindWithNestedRelations<S>(AttributeHelpers.ClassProps modelProps, Type parentType, S instance = null) where S : class, new()
+	private void AddToSelectedColumns(AttributeHelpers.Property property, string modelName)
 	{
+		var statement = StatementList.Find(x => x.Name == modelName);
+		string tableName = statement.TableName;
+		string? columnName = statement.Columns.Find(x => x.PropertyName == property.Name)?.ColumnName;
+		if (columnName is not null)
+		{
+			AllColumnsList.Add($"{tableName}.{columnName} AS '{tableName}.{columnName}'");
+		}	
+	}
+
+	private string FindAllRelations(AttributeHelpers.ClassProps modelProps, Type parentType)
+	{
+		string joinString = string.Empty;
 		Dictionary<AttributeHelpers.ClassProps, (string columnName, string fieldName, bool isList)> relatedModels = new();
 
-		foreach (var property in modelProps.Properties.Where(x => x.Type.Name != parentType?.Name))
+		foreach (var property in modelProps.Properties.Where(x => x.Type.Name != parentType?.Name)) 
 		{
+			AddToSelectedColumns(property, modelProps.ClassName);
+
 			if (property.Attributes.Any(x => x.Name.Contains("OneToOne")))
 			{
 				var relatedModel = AttributeHelpers.GetPropsByModel(property.Type);
@@ -170,6 +206,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 					.Find(x => x.Attributes.Any(x => x.Name.Contains("OneToOne"))
 							&& x.Type.Name == modelProps.ClassName).ColumnName;
 
+				joinString += $"JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
 				relatedModels.Add(relatedModel, (columnName, property.Name, false));
 			}
 			else if (property.Attributes.Any(x => x.Name.Contains("OneToMany")))
@@ -179,50 +216,17 @@ public class Repository<T> : IRepository<T> where T : class, new()
 					.Find(x => x.Attributes.Any(x => x.Name.Contains("ManyToOne"))
 												&& x.Type.Name == modelProps.ClassName).ColumnName;
 
+				joinString += $"JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
 				relatedModels.Add(relatedModel, (columnName, property.Name, true));
 			}
 		}
 
-		var sql = $"SELECT {SelectColumns} FROM {modelProps.TableName} {WhereString} {OrderByColumn}";
-		var result = DbHandler.Query(sql);
-		var data = instance == null ? ConvertDataTable<S>(result) : ConvertDataTable(result, instance);
-
 		foreach (var relatedModel in relatedModels)
 		{
-			var typ = relatedModel.Key.Instance;
-
-			foreach (var item in data)
-			{
-				var relSql = $"SELECT {SelectColumns} FROM {relatedModel.Key.TableName} " +
-				$"WHERE {relatedModel.Value.columnName} = {item.GetType().GetProperty("Id").GetValue(item)}";
-				var relResult = DbHandler.Query(relSql);
-				var relData = ConvertDataTable(relResult, typ);
-
-				if (relatedModel.Value.isList)
-				{
-					var prop = item.GetType().GetProperty(relatedModel.Value.fieldName);
-					object relListInstance = Activator.CreateInstance(prop.PropertyType);
-					IList relList = (IList)relListInstance;
-
-					foreach (var relItem in relData)
-					{
-						relItem.GetType().GetProperty(modelProps.ClassName).SetValue(relItem, item);
-						relList.Add(relItem);
-					}
-
-					prop.SetValue(item, relList);
-				}
-				else
-				{
-					relData.FirstOrDefault().GetType().GetProperty(modelProps.ClassName).SetValue(relData.FirstOrDefault(), item);
-					item.GetType().GetProperty(relatedModel.Value.fieldName).SetValue(item, relData.FirstOrDefault());
-				}
-
-				FindWithNestedRelations(relatedModel.Key, modelProps.Instance.GetType(), relatedModel.Key.Instance);
-			}
+			joinString += FindAllRelations(relatedModel.Key, modelProps.Instance.GetType());
 		}
 
-		return data;
+		return joinString;
 	}
 
 	private int InsertInto(object model, int id = 0)
@@ -287,22 +291,79 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		return insertedId;
 	}
 
-	private IEnumerable<T> ConvertDataTable<T>(DataTable table, T model = null) where T : class, new()
+	private IEnumerable<S> MapData<S>(DataTable table, S instance = null) where S : class, new()
 	{
-		IList<T> list = new List<T>();
+		ModelStatement statement;
+		List<S> result = new();
+		S obj;
+		PropertyInfo[] props;
+
+		if (instance is null)
+		{
+			statement = StatementList.FirstOrDefault(x => x.Name == typeof(S).Name);
+			props = typeof(S).GetProperties();
+		} 
+		else
+		{
+			statement = StatementList.FirstOrDefault(x => x.Name == instance.GetType().Name);
+			props = instance.GetType().GetProperties();
+		}
+
 		foreach (DataRow row in table.Rows)
 		{
-			T obj = model == null ? new T() : model;
-			foreach (DataColumn column in table.Columns)
+			obj = instance is null ? new S() : Activator.CreateInstance(instance.GetType()) as S;
+			foreach (var prop in props)
 			{
-				PropertyInfo prop = obj.GetType().GetProperty(column.ColumnName);
-				if (prop != null && row[column] != DBNull.Value)
+				string columnName = statement.Columns.FirstOrDefault(x => x.PropertyName == prop.Name)?.ColumnName;
+
+				if (table.Columns.Contains($"{statement.TableName}.{columnName}") && row[$"{statement.TableName}.{columnName}"] != DBNull.Value)
 				{
-					prop.SetValue(obj, row[column]);
+					if (IsSimpleType(prop.PropertyType))
+					{
+						prop.SetValue(obj, Convert.ChangeType(row[$"{statement.TableName}.{columnName}"], prop.PropertyType));
+					}
+					else if (prop.PropertyType.IsClass && prop.PropertyType != typeof(string))
+					{
+						var nestedInstance = Activator.CreateInstance(prop.PropertyType);
+						var nestedObj = MapData(table, nestedInstance); 
+						prop.SetValue(obj, nestedObj.FirstOrDefault());
+						nestedObj.FirstOrDefault()?.GetType().GetProperty(obj.GetType().Name).SetValue(nestedObj.FirstOrDefault(), obj);
+					}
+				}
+				else if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType.IsGenericType)
+				{
+					Type itemType = prop.PropertyType.GetGenericArguments()[0];
+					var nestedInstance = Activator.CreateInstance(itemType);
+					var nestedList = MapData(table, nestedInstance); 
+					object relListInstance = Activator.CreateInstance(prop.PropertyType);
+					IList relList = (IList)relListInstance;
+
+					foreach (var nestedItem in nestedList)
+					{
+						nestedItem.GetType().GetProperty(obj.GetType().Name).SetValue(nestedItem, obj);
+						relList.Add(nestedItem);
+					}
+
+					prop.SetValue(obj, relList);
 				}
 			}
-			list.Add(obj);
+
+			string pkName = statement.Columns.FirstOrDefault().PropertyName;
+
+			if (result.Any(x => x.GetType().GetProperty(pkName).GetValue(x).Equals(obj.GetType().GetProperty(pkName).GetValue(obj))))
+			{
+				continue;
+			}
+
+			result.Add(obj);
 		}
-		return list;
+		
+		return result;
 	}
+
+	private bool IsSimpleType(Type type)
+	{
+		return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(DateTime) || type == typeof(decimal);
+	}
+
 }

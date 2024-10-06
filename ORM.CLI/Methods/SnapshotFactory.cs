@@ -52,7 +52,7 @@ internal static class SnapshotFactory
 				attribute.FullName!.Contains("OneToOne"));
 
 			int index = isRelational ? 3 : 1;
-			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
+			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
 		}
 
 		model += "\r\n\t\t})";

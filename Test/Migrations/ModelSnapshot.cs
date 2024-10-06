@@ -26,23 +26,23 @@ public partial class ModelSnapshot : AbstractSnapshot
 
 		models.Add(new ModelStatement("Account", "accounts", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id)"),
-			new ColumnStatement("Nickname", "VARCHAR(255)"),
-			new ColumnStatement("User", "INT UNIQUE NOT NULL, ADD FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"),
+			new ColumnStatement("Id", "Id", "INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id)"),
+			new ColumnStatement("Nickname", "Nickname", "VARCHAR(255)"),
+			new ColumnStatement("User", "UserId", "INT UNIQUE NOT NULL, ADD FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"),
 		}));
 		models.Add(new ModelStatement("Post", "posts", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id)"),
-			new ColumnStatement("SendDate", "DATETIME"),
-			new ColumnStatement("Content", "VARCHAR(255)"),
-			new ColumnStatement("Account", "INT,  FOREIGN KEY (Account) REFERENCES accounts(Id)"),
+			new ColumnStatement("Id", "Id", "INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id)"),
+			new ColumnStatement("SendDate", "SendDate", "DATETIME"),
+			new ColumnStatement("Content", "Content", "VARCHAR(255)"),
+			new ColumnStatement("Account", "AccountId", "INT,  FOREIGN KEY (Account) REFERENCES accounts(Id)"),
 		}));
 		models.Add(new ModelStatement("User", "users", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id)"),
-			new ColumnStatement("Name", "VARCHAR(255)"),
-			new ColumnStatement("Email", "VARCHAR(255)"),
-			new ColumnStatement("Account", "INT UNIQUE NULL"),
+			new ColumnStatement("Id", "Id", "INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (Id)"),
+			new ColumnStatement("Name", "Name", "VARCHAR(255)"),
+			new ColumnStatement("Email", "Email", "VARCHAR(255)"),
+			new ColumnStatement("Account", "AccountId", "INT UNIQUE NULL"),
 		}));
 
 		return models;

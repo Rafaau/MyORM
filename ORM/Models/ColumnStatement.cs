@@ -2,12 +2,14 @@
 
 public class ColumnStatement
 {
-	public string Name { get; set; }
+	public string PropertyName { get; set; }
+	public string ColumnName { get; set; }
 	public string Type { get; set; }
 
-	public ColumnStatement(string name, string type)
+	public ColumnStatement(string propertyName, string columnName, string type)
 	{
-		Name = name;
+		PropertyName = propertyName;
+		ColumnName = columnName;
 		Type = type;
 	}
 }

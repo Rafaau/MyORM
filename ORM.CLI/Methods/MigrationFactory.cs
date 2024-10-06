@@ -221,7 +221,7 @@ internal static class MigrationFactory
 
 		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(y => y.FullName!.Contains("OneToMany"))))
 		{
-			if (!modelStatement.Columns.Any(x => x.Name == prop.Name))
+			if (!modelStatement.Columns.Any(x => x.PropertyName == prop.Name))
 			{
 				if (index > 1)
 					propsString += ", ";
@@ -243,7 +243,7 @@ internal static class MigrationFactory
 
 		foreach (var column in modelStatement.Columns)
 		{
-			if (!type.Properties.Select(x => x.Name).Contains(column.Name))
+			if (!type.Properties.Select(x => x.Name).Contains(column.PropertyName))
 			{
 				if (index > 1)
 					propsString += ", ";
@@ -251,12 +251,12 @@ internal static class MigrationFactory
 				if (method == Method.Up)
 				{
 					propsString += "DROP COLUMN ";
-					propsString += column.Name;
+					propsString += column.PropertyName;
 				}
 				else
 				{
 					propsString += "ADD ";
-					propsString += column.Name + " " + column.Type;
+					propsString += column.PropertyName + " " + column.Type;
 				}
 
 				index++;

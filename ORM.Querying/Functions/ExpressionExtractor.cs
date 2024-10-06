@@ -1,5 +1,7 @@
-﻿using System.Linq.Expressions;
+﻿using MyORM.Models;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace MyORM.Querying.Functions;
@@ -83,7 +85,7 @@ internal static class ExpressionExtractor
 		}
 	}
 
-	public static List<string> ExtractPropertyNames<T, TResult>(Expression<Func<T, TResult>> expression)
+	public static List<string> ExtractPropertyNames<T, TResult>(Expression<Func<T, TResult>> expression, List<ModelStatement> statementsList)
 	{
 		var names = new List<string>();
 
@@ -93,7 +95,9 @@ internal static class ExpressionExtractor
 			{
 				if (argument is MemberExpression memberExpression)
 				{
-					names.Add(memberExpression.Member.Name);
+					ModelStatement statement = statementsList.Find(s => s.Name == memberExpression.Member.DeclaringType.Name);
+					string column = $"{statement.TableName}.{memberExpression.Member.Name} AS '{statement.TableName}.{memberExpression.Member.Name}'";
+					names.Add(column);
 				}
 			}
 		}

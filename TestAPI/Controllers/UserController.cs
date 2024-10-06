@@ -116,12 +116,12 @@ namespace TestAPI.Controllers
 		}
 
 		[HttpGet("/GetAllExcept")]
-		public IActionResult GetAllExcept(string name)
+		public IActionResult GetAllExcept(string name, string email)
 		{
 			try
 			{
 				var users = _userRepository
-					.Where(user => user.Name != name)
+					.Where(user => user.Name != name && user.Account.Nickname != email)
 					.Find();
 				return Ok(users);
 			}
