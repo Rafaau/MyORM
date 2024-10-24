@@ -18,7 +18,10 @@ public class User
 	[OneToOne<Account>(relationship: Relationship.Optional, cascade: true)]
 	public Account Account { get; set; }
 
-    public User()
+	[ManyToMany<User>]
+	public List<User> Friends { get; set; }
+
+	public User()
     {
     }
 }

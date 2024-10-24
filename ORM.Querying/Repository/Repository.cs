@@ -8,6 +8,10 @@ using MyORM.Models;
 using MyORM.Attributes;
 using MyORM.Enums;
 using System.Collections;
+using MyORM.Querying.Enums;
+using MyORM.Querying.Functions;
+using Org.BouncyCastle.Asn1.X509.Qualified;
+using MySqlX.XDevAPI.Common;
 
 namespace MyORM.Querying.Repository;
 
@@ -30,6 +34,8 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		}
 	}
 
+	private DataConverter dataConverter;
+
 	public Repository(DbHandler dbHandler)
 	{
 		Model = typeof(T);
@@ -42,6 +48,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(Snapshot), dbHandler.AccessLayer.Options.GetMigrationsAssembly()).Last();
 			var method = snapshotProps.Methods.Find(x => x.Name == "GetModelsStatements");
 			StatementList = (List<ModelStatement>)method!.Invoke(snapshotProps.Instance, null)!;
+			dataConverter = new DataConverter(StatementList);
 		}
 		catch (Exception e)
 		{
@@ -61,9 +68,10 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			? SelectColumns
 			: AllColumnsString;
 
+		AllColumnsList.Clear();
 		var sql = $"SELECT {selectColumns} FROM {ModelProps.TableName} {join} {WhereString} {OrderByColumn}";
 		var result = DbHandler.Query(sql);
-		var data = MapData<T>(result);
+		var data = ConvertData<T>(result);
 		return data;
 	}
 
@@ -76,7 +84,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 		var sql = $"SELECT {selectColumns} FROM {ModelProps.TableName} {join} {WhereString} {OrderByColumn} LIMIT 1";
 		var result = DbHandler.Query(sql);
-		var data = MapData<T>(result);
+		var data = dataConverter.MapData<T>(result);
 		return data.FirstOrDefault();
 	}
 
@@ -123,7 +131,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			var columnName = property.Name;
 			var columnValue = property.GetValue(model);
 
-			if (columnValue is null || property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+			if (columnValue is null || property.HasAttribute("PrimaryGeneratedColumn"))
 			{
 				continue;
 			}
@@ -151,7 +159,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 	{
 		foreach (var property in model.GetType().GetProperties())
 		{
-			if (property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+			if (property.HasAttribute("PrimaryGeneratedColumn"))
 			{
 				WhereString = $"WHERE {property.Name} = {property.GetValue(model)}";
 			}
@@ -161,9 +169,9 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		DbHandler.Execute(sql);
 	}
 
-	public Repository<T> OrderBy(string columnName, string order = "ASC")
+	public Repository<T> OrderBy<TResult>(Expression<Func<T, TResult>> selector, OrderBy order)
 	{
-		OrderByColumn = Parameters<T>.GetOrderString(columnName, order);
+		OrderByColumn = Parameters<T>.GetOrderString(selector, order, StatementList);
 		return this;
 	}
 
@@ -187,7 +195,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		if (columnName is not null)
 		{
 			AllColumnsList.Add($"{tableName}.{columnName} AS '{tableName}.{columnName}'");
-		}	
+		}
 	}
 
 	private string FindAllRelations(AttributeHelpers.ClassProps modelProps, Type parentType)
@@ -195,28 +203,26 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		string joinString = string.Empty;
 		Dictionary<AttributeHelpers.ClassProps, (string columnName, string fieldName, bool isList)> relatedModels = new();
 
-		foreach (var property in modelProps.Properties.Where(x => x.Type.Name != parentType?.Name)) 
+		foreach (var property in modelProps.Properties) 
 		{
 			AddToSelectedColumns(property, modelProps.ClassName);
 
-			if (property.Attributes.Any(x => x.Name.Contains("OneToOne")))
+			if (property.Type.Name == parentType?.Name) continue;
+
+			if (property.HasAttribute("OneToOne"))
 			{
 				var relatedModel = AttributeHelpers.GetPropsByModel(property.Type);
-				string columnName = relatedModel.Properties
-					.Find(x => x.Attributes.Any(x => x.Name.Contains("OneToOne"))
-							&& x.Type.Name == modelProps.ClassName).ColumnName;
+				string columnName = relatedModel.Properties.WithNameAndAttribute(modelProps.ClassName, "OneToOne").ColumnName;
 
-				joinString += $"JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
+				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
 				relatedModels.Add(relatedModel, (columnName, property.Name, false));
 			}
-			else if (property.Attributes.Any(x => x.Name.Contains("OneToMany")))
+			else if (property.HasAttribute("OneToMany"))
 			{
 				var relatedModel = AttributeHelpers.GetPropsByModel(property.Type.GetGenericArguments()[0]);
-				string columnName = relatedModel.Properties
-					.Find(x => x.Attributes.Any(x => x.Name.Contains("ManyToOne"))
-												&& x.Type.Name == modelProps.ClassName).ColumnName;
+				string columnName = relatedModel.Properties.WithNameAndAttribute(modelProps.ClassName, "ManyToOne").ColumnName;
 
-				joinString += $"JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
+				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
 				relatedModels.Add(relatedModel, (columnName, property.Name, true));
 			}
 		}
@@ -238,12 +244,12 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 		foreach (var property in model.GetType().GetProperties())
 		{
-			bool isRelational = property.GetAttributes().Any(x => x.Name.Contains("OneToOne"));
+			bool isRelational = property.HasAttribute("OneToOne");
 			var columnName = property.Name;
 			var columnValue = property.GetValue(model);
 
 			if ((columnValue is null && !isRelational) 
-				|| property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
+				|| property.HasAttribute("PrimaryGeneratedColumn"))
 			{
 				continue;
 			}
@@ -253,11 +259,9 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				columnValue = $"'{columnValue}'";
 			}
 
-			if (property.GetAttributes().Any(x => x.Name.Contains("OneToOne")))
+			if (isRelational)
 			{
-				Relationship relationship = (Relationship)modelProps.Properties
-					.Find(x => x.Name == property.Name).AttributeProps
-					.FirstOrDefault(x => x.Key == "Relationship").Value;
+				Relationship relationship = modelProps.Properties.GetRelationship(property.Name);
 
 				if (relationship == Relationship.Optional)
 				{
@@ -291,79 +295,110 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		return insertedId;
 	}
 
-	private IEnumerable<S> MapData<S>(DataTable table, S instance = null) where S : class, new()
+	private IEnumerable<S> ConvertData<S>(DataTable table) where S : class, new()
+	{
+		var data = dataConverter.MapData<S>(table);
+		data = MapManyToMany(data.ToList());
+
+		return data;
+	}
+
+	private IEnumerable<S> MapManyToMany<S>(IEnumerable<S> data, S instance = null, Type parentType = null) where S: class, new()
 	{
 		ModelStatement statement;
-		List<S> result = new();
-		S obj;
-		PropertyInfo[] props;
-
+		PropertyInfo[] props; 
+		
 		if (instance is null)
 		{
-			statement = StatementList.FirstOrDefault(x => x.Name == typeof(S).Name);
+			statement = StatementList.Find(x => x.Name == typeof(S).Name);
 			props = typeof(S).GetProperties();
-		} 
+		}
 		else
 		{
-			statement = StatementList.FirstOrDefault(x => x.Name == instance.GetType().Name);
+			statement = StatementList.Find(x => x.Name == instance.GetType().Name);
 			props = instance.GetType().GetProperties();
 		}
 
-		foreach (DataRow row in table.Rows)
+		foreach (var obj in data)
 		{
-			obj = instance is null ? new S() : Activator.CreateInstance(instance.GetType()) as S;
-			foreach (var prop in props)
+			foreach (var prop in props.WithAttributes(["ManyToMany"]))
 			{
-				string columnName = statement.Columns.FirstOrDefault(x => x.PropertyName == prop.Name)?.ColumnName;
+				var relStatement = statement.Relationships.Find(x => x.PropertyName == prop.Name);
+				string joinString = FindAllRelations(ModelProps, null);
+				var modelProps = ModelProps;
+				Type typeOfList = prop.PropertyType.GetGenericArguments()[0];
+				var nestedInstance = Activator.CreateInstance(typeOfList);
 
-				if (table.Columns.Contains($"{statement.TableName}.{columnName}") && row[$"{statement.TableName}.{columnName}"] != DBNull.Value)
+				if (instance is not null)
 				{
-					if (IsSimpleType(prop.PropertyType))
+					AllColumnsList.Clear();
+					joinString = string.Empty;
+					modelProps = AttributeHelpers.GetPropsByModel(prop.PropertyType.GetGenericArguments()[0]);
+
+					foreach (var property in modelProps.Properties)
 					{
-						prop.SetValue(obj, Convert.ChangeType(row[$"{statement.TableName}.{columnName}"], prop.PropertyType));
-					}
-					else if (prop.PropertyType.IsClass && prop.PropertyType != typeof(string))
-					{
-						var nestedInstance = Activator.CreateInstance(prop.PropertyType);
-						var nestedObj = MapData(table, nestedInstance); 
-						prop.SetValue(obj, nestedObj.FirstOrDefault());
-						nestedObj.FirstOrDefault()?.GetType().GetProperty(obj.GetType().Name).SetValue(nestedObj.FirstOrDefault(), obj);
+						AddToSelectedColumns(property, modelProps.ClassName);
 					}
 				}
-				else if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType.IsGenericType)
+				string selectColumns = SelectColumns.Length > 0
+					? SelectColumns
+					: AllColumnsString;
+
+				AllColumnsList.Clear();
+				var sql =
+					$"SELECT {selectColumns} FROM {modelProps.TableName} {joinString} " +
+					$"LEFT JOIN {relStatement.TableName} ON {relStatement.TableName}.{relStatement.ColumnName} = {obj.GetPropertyValue("Id")} " +
+					$"WHERE {modelProps.TableName}.Id = {relStatement.TableName}.{relStatement.ColumnName_1}";
+				var sqlResult = DbHandler.Query(sql);
+				var result = dataConverter.MapData(sqlResult, nestedInstance);
+
+				IList relList = (IList)Activator.CreateInstance(prop.PropertyType);
+				foreach (var item in result)
 				{
-					Type itemType = prop.PropertyType.GetGenericArguments()[0];
-					var nestedInstance = Activator.CreateInstance(itemType);
-					var nestedList = MapData(table, nestedInstance); 
-					object relListInstance = Activator.CreateInstance(prop.PropertyType);
-					IList relList = (IList)relListInstance;
-
-					foreach (var nestedItem in nestedList)
-					{
-						nestedItem.GetType().GetProperty(obj.GetType().Name).SetValue(nestedItem, obj);
-						relList.Add(nestedItem);
-					}
-
-					prop.SetValue(obj, relList);
+					relStatement = statement.Relationships.Find(x => x.PropertyName == prop.Name);
+					relList.Add(item);
 				}
+
+				prop.SetValue(obj, relList);
 			}
 
-			string pkName = statement.Columns.FirstOrDefault().PropertyName;
-
-			if (result.Any(x => x.GetType().GetProperty(pkName).GetValue(x).Equals(obj.GetType().GetProperty(pkName).GetValue(obj))))
+			foreach (var prop in props.WithAttributes(["OneToOne"]).Where(x => x.PropertyType.Name != parentType?.Name))
 			{
-				continue;
+				object relListInstance = Activator.CreateInstance(prop.PropertyType);
+				var objValue = obj.GetPropertyValue(prop.Name);
+				IEnumerable<object> relList = new List<object>()
+				{
+					objValue
+				};
+
+				var result = MapManyToMany(relList, relListInstance, obj.GetType());
+				prop.SetValue(obj, result.FirstOrDefault());
 			}
 
-			result.Add(obj);
+			foreach (var prop in props.WithAttributes(["OneToMany"]))
+			{
+				List<object> relObj = new List<object>();
+				var objValue = obj.GetPropertyValue(prop.Name);
+				Type typeOfList = prop.PropertyType.GetGenericArguments()[0];
+				var nestedInstance = Activator.CreateInstance(typeOfList);
+
+				foreach (var item in objValue as IEnumerable)
+				{
+					relObj.Add(item);
+				}
+
+				var result = MapManyToMany(relObj, nestedInstance);
+
+				IList relList = (IList)Activator.CreateInstance(prop.PropertyType);
+				foreach (var item in result)
+				{
+					relList.Add(item);
+				}
+
+				prop.SetValue(obj, relList);
+			}
 		}
-		
-		return result;
-	}
 
-	private bool IsSimpleType(Type type)
-	{
-		return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(DateTime) || type == typeof(decimal);
+		return data;
 	}
-
 }

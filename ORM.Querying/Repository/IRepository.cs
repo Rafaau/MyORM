@@ -1,5 +1,5 @@
-﻿using MyORM.Querying.Abstract;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using MyORM.Querying.Enums;
 
 namespace MyORM.Querying.Repository;
 
@@ -11,7 +11,7 @@ public interface IRepository<T> where T : class, new()
 	void Delete(T model);
 	void Delete();
 	IEnumerable<T> Find();
-	Repository<T> OrderBy(string columnName, string order = "ASC");
+	Repository<T> OrderBy<TResult>(Expression<Func<T, TResult>> selector, OrderBy order = Enums.OrderBy.ASC);
 	Repository<T> Where(Expression<Func<T, bool>> predicate);
 	Repository<T> Select<TResult>(Expression<Func<T, TResult>> selector);
 }

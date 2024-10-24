@@ -1,10 +1,24 @@
 ﻿using MyORM.Attributes;
+using MyORM.Enums;
+using System.Configuration;
 using System.Reflection;
 
 namespace MyORM.Common.Methods;
 
 public class AttributeHelpers
 {
+	public static string AssemblyPath
+	{
+		get
+		{
+			#if DEBUG
+				return ConfigurationManager.AppSettings["AssemblyPath"];
+			#else
+				return Directory.GetCurrentDirectory() + "\\obj";
+			#endif
+		}
+	}
+
 	public class ClassProps
 	{
 		public string ClassName { get; set; }
@@ -56,8 +70,10 @@ public class AttributeHelpers
 	public static List<ClassProps> GetPropsByAttribute(Type attributeType, string assemblyPath = "")
 	{
 		List<ClassProps> props = new List<ClassProps>();
+
+
 		if (assemblyPath == "")
-			assemblyPath = Directory.GetCurrentDirectory() + "\\obj";
+			assemblyPath = AssemblyPath;
 
 		foreach (var file in Directory.EnumerateFiles(assemblyPath, "*.dll", SearchOption.AllDirectories))
 		{
@@ -175,4 +191,12 @@ public class AttributeHelpers
 
 		return props;
 	}
+}
+
+public static class HelpersExtensions
+{
+	public static Relationship GetRelationship(this List<AttributeHelpers.Property> properties, string propertyName) 
+		=> (Relationship)properties
+			.Find(x => x.Name == propertyName).AttributeProps
+			.FirstOrDefault(x => x.Key == "Relationship").Value;
 }

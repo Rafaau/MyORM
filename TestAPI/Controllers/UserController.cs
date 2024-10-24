@@ -4,6 +4,7 @@ using TestAPI.DTO;
 using MyORM.Abstract;
 using MyORM.Projectioner.Methods;
 using MyORM.Querying.Repository;
+using MyORM.Querying.Enums;
 
 namespace TestAPI.Controllers
 {
@@ -49,12 +50,12 @@ namespace TestAPI.Controllers
 		}
 
 		[HttpGet("/GetWithOrder")]
-		public IActionResult GetWithOrder(string columnName, string order)
+		public IActionResult GetWithOrder(OrderBy order)
 		{
 			try
 			{
 				var users = _userRepository
-					.OrderBy(columnName, order)
+					.OrderBy(user => new { user.Id }, order)
 					.Find();
 				return Ok(users);
 			}

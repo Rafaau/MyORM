@@ -3,12 +3,23 @@ using MyORM.Attributes;
 using MyORM.CLI.Messaging.Interfaces;
 using MyORM.CLI.Methods;
 using MyORM.Common.Methods;
-using System.Reflection;
+using System.Configuration;
 
 namespace MyORM.CLI.Operations;
 
 internal class Migration
 {
+	public static string MigrationsPath
+	{
+		get
+		{
+			#if DEBUG
+				return ConfigurationManager.AppSettings["MigrationsPath"];
+			#else
+			#endif
+		}
+	}
+
 	private static ILogger _logger;
 
 	public Migration(ILogger logger)
@@ -41,13 +52,24 @@ internal class Migration
 
 		var options = (Options)dataAccessProps.Properties.First(x => x.Name == "Options").Value;
 
-		string directoryPath = options.MigrationsAssembly == ""
-			? Path.Combine(Directory.GetCurrentDirectory(), "Migrations")
-			: Path.Combine(options.GetMigrationsMainDirectory(), "Migrations");
+		string entitiesAssemblyPath;
+		string directoryPath;
+		string nameSpace;
 
-		string nameSpace = options.MigrationsAssembly == ""
-			? Directory.GetCurrentDirectory().Split('\\').Last()
-			: options.MigrationsAssembly;
+		#if DEBUG
+			entitiesAssemblyPath = ConfigurationManager.AppSettings["EntitiesAssemblyPath"];
+			directoryPath = "D:\\repos\\ORM\\Test\\Migrations";
+			nameSpace = "Test";
+		#else
+			entitiesAssemblyPath = options.GetEntitiesAssembly();
+			directoryPath = options.MigrationsAssembly == ""
+				? Path.Combine(Directory.GetCurrentDirectory(), "Migrations")
+				: Path.Combine(options.GetMigrationsMainDirectory(), "Migrations");
+
+			nameSpace = options.MigrationsAssembly == ""
+				? Directory.GetCurrentDirectory().Split('\\').Last()
+				: options.MigrationsAssembly;
+		#endif
 
 		if (!Directory.Exists(directoryPath))
 		{
@@ -56,7 +78,7 @@ internal class Migration
 			_logger.LogInfo("DirectoryCreated", new[] { Directory.GetCurrentDirectory() });
 		}
 
-		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity), options.GetEntitiesAssembly());
+		var types = AttributeHelpers.GetPropsByAttribute(typeof(Entity), entitiesAssemblyPath);
 		_logger.LogInfo("ProcessingEntities", types.Select(x => x.ClassName).ToArray());
 
 		// SNAPSHOT

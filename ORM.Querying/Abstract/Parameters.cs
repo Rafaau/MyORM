@@ -1,4 +1,5 @@
 ﻿using MyORM.Models;
+using MyORM.Querying.Enums;
 using MyORM.Querying.Functions;
 using System.Collections;
 using System.Linq.Expressions;
@@ -15,14 +16,15 @@ public static class Parameters<T> where T : new()
 		return whereClause.ToString();
 	}
 
-	public static string GetOrderString(string columnName, string order)
+	public static string GetOrderString<TResult>(Expression<Func<T, TResult>> selector, OrderBy order, List<ModelStatement> statementsList)
 	{
-		return $"ORDER BY {columnName} {order}";
+		var names = ExpressionExtractor.ExtractPropertyNames(selector, ParameterType.OrderBy, statementsList);
+		return $"ORDER BY {string.Join(", ", names)} {order}";
 	}
 
 	public static string GetSelectString<TResult>(Expression<Func<T, TResult>> selector, List<ModelStatement> statementsList)
 	{
-		var names = ExpressionExtractor.ExtractPropertyNames(selector, statementsList);
+		var names = ExpressionExtractor.ExtractPropertyNames(selector, ParameterType.Select, statementsList);
 		return string.Join(", ", names);
 	}
 }

@@ -18,6 +18,9 @@ public class Post
 	[ManyToOne<Account>(Relationship.Mandatory)]
 	public Account Account { get; set; }
 
+	[ManyToMany<Tag>]
+	public List<Tag> Tags { get; set; }
+
 	public Post()
 	{
 	}

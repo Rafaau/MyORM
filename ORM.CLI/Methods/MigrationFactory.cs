@@ -29,6 +29,11 @@ internal static class MigrationFactory
 			{
 				content = content.HandleEntityPropsForUp(type, snapshotContent, modelStatements.SingleOrDefault(x => x.Name == type.ClassName));
 			}
+
+			foreach (var type in types)
+			{
+				content = content.HandleManyToManyForUp(type, snapshotContent);
+			}
 		}
 		else
 		{
@@ -73,10 +78,13 @@ internal static class MigrationFactory
 		string propsString = "";
 		int index = 1;
 
-		foreach (var prop in type.Properties)
+		List<AttributeHelpers.Property> properties = 
+			type.Properties.Where(x => !x.Attributes.Any(x => x.FullName.Contains("ManyToMany"))).ToList();
+
+		foreach (var prop in properties)
 		{
 			propsString += HandlePropertyOptions(prop, Operation.Create);
-			if (index != type.Properties.Count())
+			if (index != properties.Count())
 				propsString += ", ";
 			index++;
 		}
@@ -101,7 +109,8 @@ internal static class MigrationFactory
 			type.Properties.Where(x => x.Attributes.Any(attribute => 
 			!attribute.FullName!.Contains("OneToOne") &&
 			!attribute.FullName!.Contains("ManyToOne") &&
-			!attribute.FullName!.Contains("OneToMany")
+			!attribute.FullName!.Contains("OneToMany") &&
+			!attribute.FullName!.Contains("ManyToMany")
 		));
 
 
@@ -144,7 +153,41 @@ internal static class MigrationFactory
 				
 		}
 
-		content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+		if (propsString != "")
+			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+
+		propsString = "";
+
+		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
+		{
+			string secondTableName;
+
+			( propsString, tableName, secondTableName ) = content.GetManyToManyCreateScript(prop);
+
+			if (!content.Contains($"CREATE TABLE {tableName}")
+				&& !content.Contains($"CREATE TABLE {secondTableName}"))
+			{
+				content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} {propsString}\");";
+			}
+		}
+
+		return content;
+	}
+
+	private static string HandleManyToManyForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent)
+	{
+		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
+		{
+			string secondTableName, tableName, propsString;
+			(string _, tableName, secondTableName) = content.GetManyToManyCreateScript(prop);
+			propsString = HandlePropertyOptions(prop, Operation.Create);
+
+			if (!snapshotContent.Contains($"CREATE TABLE {tableName}")
+				&& !snapshotContent.Contains($"CREATE TABLE {secondTableName}")
+				&& !content.Contains($"CREATE TABLE {tableName}")
+				&& !content.Contains($"CREATE TABLE {secondTableName}"))
+				content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} {propsString}\");";
+		}
 
 		return content;
 	}
@@ -154,7 +197,24 @@ internal static class MigrationFactory
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
+
 		content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+
+		if (type.Properties.Any(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
+		{
+			foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
+			{
+				string secondTableName;
+				(string _, tableName, secondTableName) = content.GetManyToManyCreateScript(prop);
+
+				if (content.Contains($"CREATE TABLE {tableName}")
+					|| content.Contains($"CREATE TABLE {secondTableName}"))
+				{
+					content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+				}
+			}
+		}
+
 		return content;
 	}
 
@@ -164,7 +224,26 @@ internal static class MigrationFactory
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
 		if (!snapshotContent.Contains($"CREATE TABLE {tableName}"))
+		{
 			content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+
+			if (type.Properties.Any(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
+			{
+				foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
+				{
+					string secondTableName;
+					(string _, tableName, secondTableName) = content.GetManyToManyCreateScript(prop);
+
+					if (!snapshotContent.Contains($"CREATE TABLE {tableName}")
+						&& !snapshotContent.Contains($"CREATE TABLE {secondTableName}")
+						&& (content.Contains($"CREATE TABLE {tableName}")
+							|| content.Contains($"CREATE TABLE {secondTableName}")))
+					{
+						content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+					}
+				}
+			}
+		}
 		else
 			content = content.HandleEntityChanges(tableName, type, snapshotContent, modelStatement, Method.Down);
 
@@ -190,7 +269,11 @@ internal static class MigrationFactory
 		}
 		else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToOne"))
 			content += $"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} FOREIGN KEY ({prop.ColumnName}) REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
-		else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
+        else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToMany"))
+		{
+			content = content.GetManyToManyCreateScript(prop).Content;
+		}
+        else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{
 			switch (prop.Type.ToString())
 			{
@@ -219,7 +302,9 @@ internal static class MigrationFactory
 		string propsString = "";
 		int index = 1;
 
-		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(y => y.FullName!.Contains("OneToMany"))))
+		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(
+			y => y.FullName!.Contains("OneToMany") ||
+			y.FullName!.Contains("ManyToMany"))))
 		{
 			if (!modelStatement.Columns.Any(x => x.PropertyName == prop.Name))
 			{
@@ -256,7 +341,7 @@ internal static class MigrationFactory
 				else
 				{
 					propsString += "ADD ";
-					propsString += column.PropertyName + " " + column.Type;
+					propsString += column.PropertyName + " " + column.PropertyOptions;
 				}
 
 				index++;
@@ -267,6 +352,31 @@ internal static class MigrationFactory
 			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
 
 		return content;
+	}
+
+	internal static (string Content, string TableName, string SecondTableName) GetManyToManyCreateScript(this string content, AttributeHelpers.Property prop)
+	{
+		string script = "";
+		string currentModelName = prop.ParentClass.ClassName;
+		string relationModelName = prop.Type.GetGenericArguments()[0].Name;
+		string relationPropName = prop.Type
+			.GetGenericArguments()[0]
+			.GetProperties()
+			.Where(x => x.HasAttribute("ManyToMany"))
+			.First().Name;
+		List<string> names = new() { currentModelName, relationModelName };
+		names.Sort();
+		string tableName = $"{names[0].ToLower()}{prop.Name}{names[1]}";
+		string secondTableName = $"{names[0].ToLower()}{relationPropName}{names[1]}";
+		if (currentModelName == relationModelName)
+			relationModelName += "1";
+
+		script += $"({currentModelName}Id INT NOT NULL, {relationModelName}Id INT NOT NULL, " +
+		$"CONSTRAINT PK_{tableName} PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
+		$"CONSTRAINT FK_{tableName}_{currentModelName}s_{currentModelName}Id FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
+		$"CONSTRAINT FK_{tableName}_{relationModelName}s_{relationModelName}Id FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace('1', ' ').Trim().ToLower()}s(Id) ON DELETE CASCADE)";
+
+		return (script, tableName, secondTableName);
 	}
 
 	private static bool GetCascadeOption(AttributeHelpers.Property property)

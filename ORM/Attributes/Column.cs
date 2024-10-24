@@ -85,3 +85,22 @@ public sealed class ManyToOne<T> : Column where T : class
 		Relationship = relationship;
 	}
 }
+
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class ManyToMany<T> : Column where T : class
+{
+	public Type RelationModel { get; set; }
+	public Relationship Relationship { get; set; }
+
+	public ManyToMany()
+	{
+		RelationModel = typeof(T);
+		Relationship = Relationship.Optional;
+	}
+
+	public ManyToMany(Relationship relationship)
+	{
+		RelationModel = typeof(T);
+		Relationship = relationship;
+	}
+}

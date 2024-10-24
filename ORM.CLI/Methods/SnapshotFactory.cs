@@ -46,16 +46,38 @@ internal static class SnapshotFactory
 	{
 		string model = $"new ModelStatement(\"{type.ClassName}\", \"{type.TableName}\", new List<ColumnStatement>()\r\n\t\t{{";
 
-		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(y => y.FullName.Contains("OneToMany"))))
+		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(y =>
+			y.FullName.Contains("OneToMany") ||
+			y.FullName.Contains("ManyToMany"))))
 		{
 			bool isRelational = prop.Attributes.Any(attribute =>
 				attribute.FullName!.Contains("OneToOne"));
 
 			int index = isRelational ? 3 : 1;
-			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
+			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create)}\"),";
+			//model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
 		}
 
-		model += "\r\n\t\t})";
+		model += "\r\n\t\t}";
+
+		if (type.Properties.Any(x => x.Attributes.Any(y => y.FullName.Contains("ManyToMany"))))
+			model += ",\r\n\t\tnew List<RelationStatement>()\r\n\t\t{";
+
+		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(y => y.FullName.Contains("ManyToMany"))))
+		{
+			string tableName = content.GetManyToManyCreateScript(prop).TableName;
+			string currentModelName = prop.ParentClass.ClassName;
+			string relationModelName = prop.Type.GetGenericArguments()[0].Name;
+			string columns = currentModelName == relationModelName
+				? $"\"{currentModelName}Id\", \"{relationModelName}1Id\""
+				: $"\"{currentModelName}Id\", \"{relationModelName}Id\"";
+			model += $"\r\n\t\t\tnew RelationStatement(\"{prop.Name}\", \"{tableName}\", {columns}),";
+		}
+
+		if (model.Contains("new RelationStatement"))
+			model += "\r\n\t\t}";
+
+		model += ")";
 
 		content += $"\r\n\t\tmodels.Add({model});";
 
