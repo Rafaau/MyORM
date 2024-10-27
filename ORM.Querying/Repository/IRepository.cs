@@ -6,7 +6,7 @@ namespace MyORM.Querying.Repository;
 public interface IRepository<T> where T : class, new()
 {
 	int Create(T model);
-	void Update(T model);
+	void Save(T model);
 	void UpdateMany(T model);
 	void Delete(T model);
 	void Delete();

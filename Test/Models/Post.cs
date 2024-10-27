@@ -19,7 +19,7 @@ public class Post
 	public Account Account { get; set; }
 
 	[ManyToMany<Tag>]
-	public List<Tag> Tags { get; set; }
+	public List<Tag> Tags { get; set; } = new();
 
 	public Post()
 	{

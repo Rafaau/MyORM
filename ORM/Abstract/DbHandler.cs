@@ -49,6 +49,11 @@ public class DbHandler
 		MySQL.CommitTransaction();
 	}
 
+	public void RollbackTransaction()
+	{
+		MySQL.RollbackTransaction();
+	}
+
 	public int Execute(string sqlCommandText)
 	{
 		Console.WriteLine(sqlCommandText);

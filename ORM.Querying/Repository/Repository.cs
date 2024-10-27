@@ -10,8 +10,11 @@ using MyORM.Enums;
 using System.Collections;
 using MyORM.Querying.Enums;
 using MyORM.Querying.Functions;
-using Org.BouncyCastle.Asn1.X509.Qualified;
-using MySqlX.XDevAPI.Common;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
+using Newtonsoft.Json;
+using MySqlX.XDevAPI.Relational;
+using MyORM.Querying.Models;
 
 namespace MyORM.Querying.Repository;
 
@@ -82,43 +85,73 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			? SelectColumns
 			: AllColumnsString;
 
-		var sql = $"SELECT {selectColumns} FROM {ModelProps.TableName} {join} {WhereString} {OrderByColumn} LIMIT 1";
+		var sql = $"SELECT {selectColumns} FROM {ModelProps.TableName} {join} {WhereString} {OrderByColumn}";
 		var result = DbHandler.Query(sql);
-		var data = dataConverter.MapData<T>(result);
+		var data = ConvertData<T>(result);
+
 		return data.FirstOrDefault();
 	}
 
-	public void Update(T model)
+	public void Save(T model)
 	{
-		var columns = new List<string>();
-		var values = new List<string>();
+		List<UpdateData> updateData = new();
 
-		foreach (var property in model.GetType().GetProperties())
+		GetUpdateString(model, updateData);
+
+		try
 		{
-			var columnName = property.Name;
-			var columnValue = property.GetValue(model);
+			DbHandler.BeginTransaction();
 
-			if (columnValue is null)
+			foreach (var data in updateData)
 			{
-				continue;
-			}
+				var sql = $"UPDATE {data.TableName} SET {string.Join(", ", data.ColumnValues)} WHERE {data.WhereClause}";
+				int affected = DbHandler.Execute(sql);
 
-			if (property.GetAttributes().Any(x => x.Name == "PrimaryGeneratedColumn"))
-			{
-				WhereString = $"WHERE {columnName} = {columnValue}";
-			}
+				if (affected == 0)
+				{
+					sql = $"INSERT INTO {data.TableName} ({string.Join(", ", data.Columns)}) VALUES ({string.Join(", ", data.Values)})";
+					DbHandler.Execute(sql);
 
-			if (columnValue.GetType() == typeof(string))
-			{
-				columnValue = $"'{columnValue}'";
-			}
+					if (data.ManyToManyData is not null)
+					{
+						sql = " SELECT LAST_INSERT_ID();";
+						var result = DbHandler.Query(sql);
+						int insertedId = Convert.ToInt32(result.Rows[0][0]);
 
-			columns.Add($"{columnName} = {columnValue}");
+						sql = $"INSERT INTO {data.ManyToManyData.TableName} " +
+							$"({data.ManyToManyData.ColumnName2}, {data.ManyToManyData.ColumnName}) " +
+							$"VALUES ({insertedId}, {data.ManyToManyData.ColumnValue})";
+						DbHandler.Execute(sql);
+					}
+				}
+				else if (data.ManyToManyData is not null)
+				{
+					sql = $"SELECT * FROM {data.ManyToManyData.TableName} WHERE " +
+						$"{data.ManyToManyData.ColumnName} = {data.ManyToManyData.ColumnValue} " +
+						$"AND {data.ManyToManyData.ColumnName2} = {data.ManyToManyData.ColumnValue2}";
+
+					var result = DbHandler.Query(sql);
+					bool exists = result.Rows.Count > 0;
+					
+					if (!exists)
+					{
+						sql = $"INSERT INTO {data.ManyToManyData.TableName} " +
+							$"({data.ManyToManyData.ColumnName2}, {data.ManyToManyData.ColumnName}) " +
+							$"VALUES ({data.ManyToManyData.ColumnValue2}, {data.ManyToManyData.ColumnValue})";
+						DbHandler.Execute(sql);
+					}
+				}
+			}
 		}
-
-		string columnsString = string.Join(", ", columns);
-		var sql = $"UPDATE {ModelProps.TableName} SET {columnsString} {WhereString}";
-		DbHandler.Execute(sql);
+		catch (Exception e)
+		{
+			DbHandler.RollbackTransaction();
+			throw new Exception($"Error updating model: {e}", e);
+		}
+		finally
+		{
+			DbHandler.CommitTransaction();
+		}
 	}
 
 	public void UpdateMany(T model)
@@ -293,6 +326,116 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		}
 
 		return insertedId;
+	}
+
+	private void GetUpdateString<T>(T model, List<UpdateData> updateData, Type parentType = null, int? pkValue = null) where T : class, new()
+	{
+		List<string> columns = new();
+		List<string> values = new();
+		List<string> whereString = new();
+
+		UpdateData data = new UpdateData();
+
+		ModelStatement statement = StatementList.GetModelStatement(model.GetType().Name);
+
+		if (parentType is not null)
+		{
+			ModelStatement parentStatement = StatementList.GetModelStatement(parentType.Name);
+
+			if (parentType.HasToManyAttribute("ManyToMany", model.GetType().Name))
+			{
+				string relationName = model
+					.GetType()
+					.GetProperties()
+					.First(x => x.HasAttribute("ManyToMany")
+						&& x.PropertyType.GetGenericArguments()[0].Name == parentType.Name)
+					.Name;
+
+				RelationStatement relationStatement = statement.GetRelationStatement(relationName);
+				string parentPkName = parentStatement.GetColumn("Id").ColumnName;
+
+				data.ManyToManyData = new ManyToManyData
+				{
+					TableName = relationStatement.TableName,
+					ColumnName = $"{relationStatement.ColumnName_1}",
+					ColumnValue = pkValue.ToString(),
+					ColumnName2 = $"{relationStatement.ColumnName}",
+					ColumnValue2 = model.GetPropertyValue(statement.GetPrimaryKeyPropertyName()).ToString()
+				};
+			}
+			else if (parentType.HasToManyAttribute("OneToMany", model.GetType().Name))
+			{
+				string fkName = statement.GetColumn(parentType.Name).ColumnName;
+
+				columns.Add($"{statement.TableName}.{fkName}");
+				values.Add(pkValue.ToString());
+			}
+		}
+
+		foreach (var property in model.GetType().GetProperties())
+		{
+			if (parentType?.Name == property.PropertyType.Name
+				|| (property.PropertyType.GetGenericArguments().Count() > 0
+					&& parentType?.Name == property.PropertyType.GetGenericArguments()[0].Name))
+			{
+				continue;
+			}
+
+			if (property.HasAttribute("OneToOne"))
+			{
+				GetUpdateString(property.GetValue(model), updateData, model.GetType());
+				continue;
+			}
+
+			if (property.HasAttribute("OneToMany") || property.HasAttribute("ManyToMany"))
+			{
+				if (property.PropertyType.GetGenericArguments().Count() > 0
+					&& model.GetType().Name == property.PropertyType.GetGenericArguments()[0].Name)
+					continue;
+
+				foreach (var item in (IEnumerable)property.GetValue(model))
+					GetUpdateString(item, updateData, model.GetType(), (int)model.GetPropertyValue(statement.GetPrimaryKeyPropertyName()));
+
+				continue;
+			}
+
+			if (property.HasAttribute("ManyToMany") || property.HasAttribute("OneToMany") || property.HasAttribute("ManyToOne"))
+			{
+				continue;
+			}
+
+			var columnName = statement.GetColumn(property.Name).ColumnName;
+			var columnValue = property.GetValue(model);
+
+			if (property.HasAttribute("PrimaryGeneratedColumn"))
+			{
+				whereString.Add($"{columnName} = {property.GetValue(model)}");
+				continue;
+			}
+
+			if (columnValue is null)
+				continue;
+
+			if (columnValue.GetType() == typeof(string))
+			{
+				columnValue = $"'{columnValue}'";
+			}
+			else if (columnValue.GetType() == typeof(DateTime))
+			{
+				DateTime dateTimeValue = (DateTime)columnValue;
+				columnValue = $"'{dateTimeValue.ToString("yyyy-MM-dd HH:mm:ss")}'";
+			}
+
+			columns.Add($"{columnName}");
+			values.Add(columnValue.ToString());
+		}
+
+		data.TableName = statement.TableName;
+		data.Columns = columns;
+		data.Values = values;
+		data.WhereClause = string.Join(" AND ", whereString);
+
+		updateData.Add(data);
 	}
 
 	private IEnumerable<S> ConvertData<S>(DataTable table) where S : class, new()

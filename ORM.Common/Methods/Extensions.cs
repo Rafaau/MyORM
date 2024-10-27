@@ -33,5 +33,7 @@ public static class Extensions
 		=> props.Find(x => x.Attributes.Any(x => x.Name.Contains(attribute)) && x.Type.Name == name);
 	public static bool HasAttribute(this PropertyInfo prop, string attribute) => prop.GetAttributes().Any(x => x.FullName.Contains(attribute));
 	public static bool HasAttribute(this Property prop, string attribute) => prop.Attributes.Any(x => x.FullName.Contains(attribute));
+	public static bool HasToManyAttribute(this Type type, string attribute, string propertyName)
+		=> type.GetProperties().Any(x => x.HasAttribute(attribute) && x.PropertyType.GetGenericArguments()[0].Name == propertyName);
 }
 

@@ -153,7 +153,7 @@ namespace TestAPI.Controllers
 		{
 			try
 			{
-				_userRepository.Update(userToUpdate.ToProjection<User>());
+				_userRepository.Save(userToUpdate.ToProjection<User>());
 				return Ok();
 			}
 			catch (Exception e)
@@ -231,6 +231,27 @@ namespace TestAPI.Controllers
 				_userRepository.Create(user.ToProjection<User>());
 				_dbHandler.CommitTransaction();
 				return Ok();
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+			}
+		}
+
+		[HttpPut("/ModifyNestedProperty")]
+		public IActionResult ModifyNestedProperty(string tagName = "s")
+		{
+			try
+			{
+				var user = _userRepository
+					.Where(u => u.Name == "TestA")
+					.FindOne();
+				//user.Account.Nickname = tagName;
+				//user.Account.Posts.Add(new Post { Content = "TestC" });
+				//user.Account.Posts[1].Tags.Add(new Tag { Name = tagName });
+				user.Account.Posts[2].Tags.Add(user.Account.Posts[0].Tags[0]);
+				_userRepository.Save(user);
+				return Ok(user);
 			}
 			catch (Exception e)
 			{

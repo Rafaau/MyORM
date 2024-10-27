@@ -66,6 +66,7 @@ internal static class SnapshotFactory
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(y => y.FullName.Contains("ManyToMany"))))
 		{
 			string tableName = content.GetManyToManyCreateScript(prop).TableName;
+			
 			string currentModelName = prop.ParentClass.ClassName;
 			string relationModelName = prop.Type.GetGenericArguments()[0].Name;
 			string columns = currentModelName == relationModelName
