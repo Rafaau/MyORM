@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ORM.Common\MyORM.Common.csproj" />
     <ProjectReference Include="..\ORM\MyORM.csproj" />
   </ItemGroup>
 

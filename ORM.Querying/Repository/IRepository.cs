@@ -7,7 +7,6 @@ public interface IRepository<T> where T : class, new()
 {
 	int Create(T model);
 	void Save(T model);
-	void UpdateMany(T model);
 	void Delete(T model);
 	void Delete();
 	IEnumerable<T> Find();

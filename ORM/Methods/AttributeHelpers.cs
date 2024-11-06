@@ -1,9 +1,7 @@
-﻿using MyORM.Attributes;
-using MyORM.Enums;
-using System.Configuration;
+﻿using System.Configuration;
 using System.Reflection;
 
-namespace MyORM.Common.Methods;
+namespace MyORM.Methods;
 
 public class AttributeHelpers
 {

@@ -1,5 +1,5 @@
 ﻿using MyORM.Models;
-using MyORM.Common.Methods;
+using MyORM.Methods;
 using System.Data;
 using System.Reflection;
 using System.Collections;

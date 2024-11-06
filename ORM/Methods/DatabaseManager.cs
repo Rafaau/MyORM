@@ -1,24 +1,43 @@
 ﻿using System.Data;
 using MySql.Data.MySqlClient;
+using Npgsql;
 using System.Data.Common;
+using MyORM.DBMS;
+using Microsoft.Data.SqlClient;
+using System.Transactions;
+using Microsoft.Data.Sqlite;
 
 namespace MyORM.Methods;
-internal class MySQL : IDisposable
+internal class DatabaseManager : IDisposable
 {
 	private DbConnection Connection { get; set; }
-	private MySqlConnectionStringBuilder Builder { get; set; }
 	private string DbName { get; set; }
 	private DbTransaction? Transaction { get; set; }
 	private bool KeepConnectionOpen { get; set; }
 
-	public MySQL(string connectionString, bool keepConnectionOpen)
+	public DatabaseManager(AccessLayer accessLayer)
 	{
-		Builder = new MySqlConnectionStringBuilder(connectionString);
-		DbName = Builder.Database;
-		Builder.Database = "";
-		KeepConnectionOpen = keepConnectionOpen;
+		DbName = GetDbName(accessLayer.ConnectionString);
+		KeepConnectionOpen = accessLayer.Options.KeepConnectionOpen;
 
-		Connection = new MySqlConnection(Builder.ConnectionString);
+		switch (accessLayer.Options.Database)
+		{
+			case Database.MySQL:
+				Connection = new MySqlConnection(accessLayer.ConnectionString);
+				break;
+			case Database.PostgreSQL:
+				Connection = new NpgsqlConnection(accessLayer.ConnectionString);
+				break;
+			case Database.MicrosoftSQLServer:
+				Connection = new SqlConnection(accessLayer.ConnectionString);
+				break;
+			case Database.SQLite:
+				Connection = new SqliteConnection(accessLayer.ConnectionString);
+				break;
+			default:
+				throw new Exception("Database not supported.");
+		}
+
 		Connection.Open();
 		CheckDatabase();
 		Connection.Close();
@@ -122,8 +141,12 @@ internal class MySQL : IDisposable
 			{
 				Connection.Open();
 			}
-			using (DbCommand command = new MySqlCommand($"SHOW TABLES LIKE '{tableName}';", (MySqlConnection)Connection))
+
+			using (DbCommand command = Connection.CreateCommand())
 			{
+				command.CommandText = ScriptBuilder.SelectTable(tableName);
+				command.Transaction = Transaction;
+
 				using (var reader = command.ExecuteReader())
 				{
 					return reader.HasRows;
@@ -143,8 +166,11 @@ internal class MySQL : IDisposable
 		{
 			Connection.Open();
 		}
-		using (DbCommand command = new MySqlCommand($"SELECT {columnName} FROM {tableName} ORDER BY Id DESC LIMIT 1;", (MySqlConnection)Connection))
+		using (DbCommand command = Connection.CreateCommand())
 		{
+			command.CommandText = ScriptBuilder.SelectLastRecord(columnName, tableName);
+			command.Transaction = Transaction;
+
 			using (var reader = command.ExecuteReader())
 			{
 				if (reader.Read())
@@ -174,11 +200,13 @@ internal class MySQL : IDisposable
 		Connection.ChangeDatabase(DbName);
 	}
 
-	private static bool DatabaseExists(DbConnection connection, string dbName)
+	private bool DatabaseExists(DbConnection connection, string dbName)
 	{
 		using (DbCommand command = connection.CreateCommand())
 		{
-			command.CommandText = $"SHOW DATABASES LIKE '{dbName}'";
+			command.CommandText = ScriptBuilder.SelectDatabase(dbName);
+			command.Transaction = Transaction;
+
 			using (var reader = command.ExecuteReader())
 			{
 				return reader.HasRows;
@@ -186,13 +214,23 @@ internal class MySQL : IDisposable
 		}
 	}
 
-	private static void CreateDatabase(DbConnection connection, string dbName)
+	private void CreateDatabase(DbConnection connection, string dbName)
 	{
 		using (DbCommand command = connection.CreateCommand())
 		{
 			command.CommandText = $"CREATE DATABASE {dbName};";
+			command.Transaction = Transaction;
 			command.ExecuteNonQuery();
 		}
+	}
+
+	private string GetDbName(string connectionString)
+	{
+		return connectionString.Split(';')
+			.Select(x => x.Split('='))
+			.Where(x => x[0].Equals("Database"))
+			.Select(x => x[1])
+			.FirstOrDefault();
 	}
 
 	public void Dispose()

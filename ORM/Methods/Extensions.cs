@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
-using static MyORM.Common.Methods.AttributeHelpers;
+using static MyORM.Methods.AttributeHelpers;
 
-namespace MyORM.Common.Methods;
+namespace MyORM.Methods;
 
 public static class Extensions
 {

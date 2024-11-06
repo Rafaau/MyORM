@@ -1,25 +1,14 @@
-﻿using MyORM.Abstract;
-using MyORM.Attributes;
+﻿using MyORM.CLI.Enums;
 using MyORM.CLI.Messaging.Interfaces;
 using MyORM.CLI.Methods;
-using MyORM.Common.Methods;
+using MyORM.DBMS;
+using MyORM.Methods;
 using System.Configuration;
 
 namespace MyORM.CLI.Operations;
 
 internal class Migration
 {
-	public static string MigrationsPath
-	{
-		get
-		{
-			#if DEBUG
-				return ConfigurationManager.AppSettings["MigrationsPath"];
-			#else
-			#endif
-		}
-	}
-
 	private static ILogger _logger;
 
 	public Migration(ILogger logger)
@@ -50,7 +39,7 @@ internal class Migration
 			throw new Exception("DataAccessLayer not found");
 		}
 
-		var options = (Options)dataAccessProps.Properties.First(x => x.Name == "Options").Value;
+		Options options = (Options)dataAccessProps.Properties.First(x => x.Name == "Options").Value;
 
 		string entitiesAssemblyPath;
 		string directoryPath;
@@ -92,22 +81,29 @@ internal class Migration
 		string filepath = Path.Combine(directoryPath, filename);
 
 		_logger.LogInfo("ProducingMigration", null);
-		string content = MigrationFactory.ProduceMigrationContent(types, nameSpace, $"M{timestamp}_{input}", File.Exists(snapshotFile) ? File.ReadAllText(snapshotFile) : "");
+		string content = MigrationFactory.ProduceMigrationContent(
+			types, 
+			nameSpace, 
+			$"M{timestamp}_{input}", 
+			File.Exists(snapshotFile) 
+				? File.ReadAllText(snapshotFile) 
+				: "",
+			options.Database);
 
 		using (var stream = File.CreateText(filepath))
 		{
 			stream.WriteLine(content);
 		}
 
+		snapshotContent = SnapshotFactory.ProduceShapshotContent(types, nameSpace, options.Database);
+
 		if (File.Exists(snapshotFile))
 		{
-			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, nameSpace);
 			File.WriteAllText(snapshotFile, snapshotContent);
 		}
 		else
 		{
 			_logger.LogInfo("CreatingSnapshot", new[] { "" });
-			snapshotContent = SnapshotFactory.ProduceShapshotContent(types, nameSpace);
 			using (var snapshotStream = File.CreateText(snapshotFile))
 				snapshotStream.WriteLine(snapshotContent);
 			_logger.LogInfo("FileCreated", new[] { $"ModelSnapshot.cs in {directoryPath}" });
@@ -117,7 +113,7 @@ internal class Migration
 		_logger.LogInfo("Done", null);
 	}
 
-	public async void ExecuteMigration(string methodName)
+	public async void ExecuteMigration(Method method)
 	{
 		try
 		{
@@ -127,62 +123,85 @@ internal class Migration
 				throw new Exception("DataAccessLayer not found");
 			}
 
-			var options = (Options)dataAccessProps.Properties.Find(x => x.Name == "Options").Value;
+			Options options = (Options)dataAccessProps.Properties.Find(x => x.Name == "Options").Value;
+
+			AccessLayer accessLayer = (AccessLayer)dataAccessProps.Instance;
 
 			var connectionString = dataAccessProps.Properties.Find(x => x.Name == "ConnectionString")!.Value;
 
-			DbHandler dbHandler = new DbHandler(connectionString.ToString());
+			DbHandler dbHandler = new DbHandler(accessLayer);
 
-			var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(Attributes.Migration), options.GetMigrationsAssembly()).LastOrDefault();
-			var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(Snapshot), options.GetMigrationsAssembly()).LastOrDefault();
+			ScriptBuilder.Database = options.Database;
 
-			if (dbHandler.CheckIfTableExists("_MyORMMigrationsHistory"))
+			try
 			{
-				if (migrationProps == null)
-				{
-					throw new Exception("Migration not found");
-				}
+				dbHandler.BeginTransaction();
 
-				bool doesExist = false;
+				#if DEBUG
+					string migrationsAssemblyPath = ConfigurationManager.AppSettings["MigrationsPath"]!;
+				#else
+					string migrationsAssemblyPath = options.GetMigrationsAssembly();
+				#endif
 
-				if (migrationProps != null 
-					&& !dbHandler.CheckTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}"))
+				var migrationProps = AttributeHelpers.GetPropsByAttribute(typeof(MyORM.Migration), migrationsAssemblyPath).LastOrDefault();
+				var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(MyORM.Snapshot), migrationsAssemblyPath).LastOrDefault();
+
+				if (dbHandler.CheckIfTableExists("_MyORMMigrationsHistory"))
 				{
-					doesExist = true;
+					if (migrationProps == null)
+					{
+						throw new Exception("Migration not found");
+					}
+
+					bool doesExist = false;
+
+					if (migrationProps != null
+						&& !dbHandler.CheckTheLastRecord("_MyORMMigrationsHistory", "MigrationName", $"{migrationProps.ClassName}{(method == Method.Down ? "_revert" : "")}"))
+					{
+						doesExist = true;
+					}
+					else
+					{
+						Console.WriteLine($"{(method == Method.Up ?
+							"Provided migration already executed" :
+							"Provided migration already reverted")}");
+						return;
+					}
+
+					var methodInfo = migrationProps.Methods.First(x => x.Name == method.ToString());
+					methodInfo.Invoke(migrationProps.Instance, new object[] { dbHandler });
+
+					if (doesExist)
+						dbHandler.InsertMigrationRecord(migrationProps.ClassName, method == Method.Down);
 				}
 				else
 				{
-					Console.WriteLine($"{(methodName == "Up" ? "Provided migration already executed" : "Provided migration already reverted")}");
-					return;
+					if (snapshotProps == null)
+					{
+						throw new Exception("Snapshot not found");
+					}
+
+					if (migrationProps != null)
+					{
+						dbHandler.CreateMigrationHistoryTable();
+						dbHandler.InsertMigrationRecord(migrationProps.ClassName, method == Method.Down);
+					}
+
+					var methodInfo = snapshotProps.Methods.First(x => x.Name == "CreateDBFromSnapshot");
+					methodInfo.Invoke(snapshotProps.Instance, [dbHandler]);
 				}
 
-				var method = migrationProps.Methods.First(x => x.Name == methodName);
-				method.Invoke(migrationProps.Instance, new object[] { dbHandler });
-
-				if (doesExist)
-					dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
+				dbHandler.CommitTransaction();
 			}
-			else
+			catch (Exception e)
 			{
-				if (snapshotProps == null)
-				{
-					throw new Exception("Snapshot not found");
-				}
-
-				if (migrationProps != null)
-				{
-					dbHandler.Execute($"CREATE TABLE _MyORMMigrationsHistory (Id INT NOT NULL AUTO_INCREMENT, MigrationName VARCHAR(255) NOT NULL, Date DATETIME NOT NULL, PRIMARY KEY (Id))");
-					dbHandler.Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationProps.ClassName}{(methodName == "Down" ? "_revert" : "")}', NOW())");
-				}
-
-				var method = snapshotProps.Methods.First(x => x.Name == "CreateDBFromSnapshot");
-				method.Invoke(snapshotProps.Instance, [dbHandler]);
+				dbHandler.RollbackTransaction();
+				throw e;
 			}
 		}
 		catch (Exception e)
 		{
-			_logger.LogError(e);
-			return;
+			throw e;
 		}
 	}
 }

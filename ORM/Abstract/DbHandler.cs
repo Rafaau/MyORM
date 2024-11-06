@@ -1,63 +1,50 @@
-﻿using MyORM.Methods;
+﻿using MyORM.DBMS;
+using MyORM.Methods;
 using System.Data;
 
-namespace MyORM.Abstract;
+namespace MyORM;
 
 /// <summary>
 /// Class that handles the database connection and operations.
 /// </summary>
 public class DbHandler
 {
-	public string ConnectionString { get; set; }
 	public AccessLayer AccessLayer { get; set; }
-	private MySQL MySQL { get; set; }
-	private bool KeepConnectionOpen { get; set; } = false;
+	private DatabaseManager databaseManager { get; set; }
 
 	/// <summary>
-	/// Constructor that initializes the connection string and the MySQL object.
+	/// Constructor that initializes the <see cref="DatabaseManager"/> instance.
 	/// </summary>
 	/// <param name="accessLayer"><c>AccessLayer</c> instance.</param>
 	public DbHandler(AccessLayer accessLayer)
 	{
 		AccessLayer = accessLayer;
-		ConnectionString = accessLayer.ConnectionString;
-		KeepConnectionOpen = accessLayer.Options.KeepConnectionOpen;
-		MySQL = new MySQL(ConnectionString, KeepConnectionOpen);
+		databaseManager = new DatabaseManager(accessLayer);
 	}
 
-	/// <summary>
-	/// Constructor that initializes the connection string and the MySQL object.
-	/// </summary>
-	/// <param name="connectionString">Connection string to database.</param>
-	public DbHandler(string connectionString)
-	{
-		ConnectionString = connectionString;
-		MySQL = new MySQL(ConnectionString, KeepConnectionOpen);
-	}
+	public void OpenConnection() => databaseManager.OpenConnection();
 
-	public void OpenConnection() => MySQL.OpenConnection();
-
-	public void CloseConnection() => MySQL.CloseConnection();
+	public void CloseConnection() => databaseManager.CloseConnection();
 
 	public void BeginTransaction()
 	{
-		MySQL.BeginTransaction();
+		databaseManager.BeginTransaction();
 	}
 
 	public void CommitTransaction()
 	{
-		MySQL.CommitTransaction();
+		databaseManager.CommitTransaction();
 	}
 
 	public void RollbackTransaction()
 	{
-		MySQL.RollbackTransaction();
+		databaseManager.RollbackTransaction();
 	}
 
 	public int Execute(string sqlCommandText)
 	{
 		Console.WriteLine(sqlCommandText);
-		return MySQL.ExecuteNonQuery(sqlCommandText);
+		return databaseManager.ExecuteNonQuery(sqlCommandText);
 	}
 
 	public void ExecuteWithTransaction(string sqlCommandText)
@@ -69,16 +56,26 @@ public class DbHandler
 
 	public DataTable Query(string sqlCommandText)
 	{
-		return MySQL.ExecuteQuery(sqlCommandText);
+		return databaseManager.ExecuteQuery(sqlCommandText);
 	}
 
 	public bool CheckIfTableExists(string tableName)
 	{
-		return MySQL.CheckIfTableExists(tableName);
+		return databaseManager.CheckIfTableExists(tableName);
 	}
 
 	public bool CheckTheLastRecord(string tableName, string columnName, string value)
 	{
-		return MySQL.CheckTheLastRecord(tableName, columnName, value);
+		return databaseManager.CheckTheLastRecord(tableName, columnName, value);
+	}
+
+	public void InsertMigrationRecord(string migrationName, bool revert = false)
+	{
+		Execute($"INSERT INTO _MyORMMigrationsHistory (MigrationName, Date) VALUES ('{migrationName}{(revert ? "_revert" : "")}', {ScriptBuilder.DateTimeNow})");
+	}
+
+	public void CreateMigrationHistoryTable()
+	{
+		Execute($"CREATE TABLE _MyORMMigrationsHistory ({ScriptBuilder.BuildPrimaryKey("Id")}, MigrationName VARCHAR(255) NOT NULL, Date {ScriptBuilder.DateTimeType} NOT NULL)");
 	}
 }

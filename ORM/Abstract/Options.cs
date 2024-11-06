@@ -1,7 +1,11 @@
-﻿namespace MyORM.Abstract;
+﻿using MyORM.Methods;
+using System.Configuration;
+
+namespace MyORM;
 
 public class Options
 {
+	public Database Database { get; set; } = Database.MySQL;
 	public string EntitiesAssembly { get; set; } = string.Empty;
 	public string MigrationsAssembly { get; set; } = string.Empty;
 	public bool KeepConnectionOpen { get; set; } = false;

@@ -1,8 +1,4 @@
-﻿using MyORM.Attributes;
-using MyORM.Enums;
-using Test.Models;
-
-namespace TestAPI.DTO;
+﻿namespace TestAPI.DTO;
 
 public class AccountRequest
 {

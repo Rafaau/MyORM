@@ -1,8 +1,6 @@
-﻿namespace MyORM.Enums
+﻿namespace MyORM;
+public enum Relationship
 {
-	public enum Relationship
-	{
-		Mandatory,
-		Optional
-	}
+	Mandatory,
+	Optional
 }

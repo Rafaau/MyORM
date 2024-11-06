@@ -1,20 +1,14 @@
 ﻿using System.Data;
 using System.Reflection;
 using System.Linq.Expressions;
-using MyORM.Abstract;
-using MyORM.Common.Methods;
+using MyORM.Methods;
 using MyORM.Querying.Abstract;
 using MyORM.Models;
-using MyORM.Attributes;
-using MyORM.Enums;
 using System.Collections;
 using MyORM.Querying.Enums;
 using MyORM.Querying.Functions;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Runtime.Serialization;
-using Newtonsoft.Json;
-using MySqlX.XDevAPI.Relational;
 using MyORM.Querying.Models;
+using MyORM.DBMS;
 
 namespace MyORM.Querying.Repository;
 
@@ -39,12 +33,14 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 	private DataConverter dataConverter;
 
-	public Repository(DbHandler dbHandler)
+	public Repository(DbHandler dbHandler, AccessLayer accessLayer)
 	{
 		Model = typeof(T);
 
 		DbHandler = dbHandler;
 		ModelProps = AttributeHelpers.GetPropsByModel(Model);
+
+		ScriptBuilder.Database = dbHandler.AccessLayer.Options.Database;
 
 		try
 		{
@@ -56,6 +52,13 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		catch (Exception e)
 		{
 			throw new Exception("Error getting model statements from Access Layer", e);
+		}
+
+		bool tableExists = dbHandler.CheckIfTableExists(ModelProps.TableName);
+
+		if (!tableExists)
+		{
+			throw new Exception($"Table {ModelProps.TableName} does not exist. Please migrate data structure to database.");
 		}
 	}
 
@@ -114,7 +117,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 					if (data.ManyToManyData is not null)
 					{
-						sql = " SELECT LAST_INSERT_ID();";
+						sql = $" {ScriptBuilder.BuildIdentity(data.TableName, "Id")}";
 						var result = DbHandler.Query(sql);
 						int insertedId = Convert.ToInt32(result.Rows[0][0]);
 
@@ -152,34 +155,6 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		{
 			DbHandler.CommitTransaction();
 		}
-	}
-
-	public void UpdateMany(T model)
-	{
-		var columns = new List<string>();
-		var values = new List<string>();
-
-		foreach (var property in model.GetType().GetProperties())
-		{
-			var columnName = property.Name;
-			var columnValue = property.GetValue(model);
-
-			if (columnValue is null || property.HasAttribute("PrimaryGeneratedColumn"))
-			{
-				continue;
-			}
-
-			if (columnValue.GetType() == typeof(string))
-			{
-				columnValue = $"'{columnValue}'";
-			}
-
-			columns.Add($"{columnName} = {columnValue}");
-		}
-
-		string columnsString = string.Join(", ", columns);
-		var sql = $"UPDATE {ModelProps.TableName} SET {columnsString} {WhereString}";
-		DbHandler.Execute(sql);
 	}
 
 	public void Delete()
@@ -227,7 +202,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		string? columnName = statement.Columns.Find(x => x.PropertyName == property.Name)?.ColumnName;
 		if (columnName is not null)
 		{
-			AllColumnsList.Add($"{tableName}.{columnName} AS '{tableName}.{columnName}'");
+			AllColumnsList.Add(ScriptBuilder.BuildSelect(tableName, columnName));
 		}
 	}
 
@@ -312,8 +287,9 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			values.Add(columnValue.ToString());
 		}
 
-		var sql = $"INSERT INTO {modelProps.TableName} ({string.Join(", ", columns)}) VALUES ({string.Join(", ", values)});";
-		sql += " SELECT LAST_INSERT_ID();";
+		var sql = 
+			$"INSERT INTO {modelProps.TableName} ({string.Join(", ", columns)}) VALUES ({string.Join(", ", values)}); " +
+			$"{ScriptBuilder.BuildIdentity(modelProps.TableName, "Id")}";
 
 		var result = DbHandler.Query(sql);
 		int insertedId = Convert.ToInt32(result.Rows[0][0]);

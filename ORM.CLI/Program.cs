@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using MyORM.CLI.Messaging.Interfaces;
 using MyORM.CLI.Messaging.Services;
 using MyORM.CLI.Operations;
+using MyORM.CLI.Enums;
 
 // 1. dotnet pack
 // 2. dotnet tool install / update --global --add-source ./nupkg MyORM.CLI
@@ -35,6 +36,13 @@ public class Program
 			migration.Create("Test1");
 			logger.LogSuccess("MigrationCreated");
 		}
+
+        if (command.StartsWith("uat"))
+        {
+            migration.ExecuteMigration(Method.Up);
+            logger.LogSuccess("MigrationApplied");
+        }
+
         if (command.StartsWith("migration:create"))
         {
             if (args.Length < 2)
@@ -57,7 +65,7 @@ public class Program
         {
             try
             {
-                migration.ExecuteMigration("Up");
+                migration.ExecuteMigration(Method.Up);
                 logger.LogSuccess("MigrationApplied");
             }
             catch (Exception e)
@@ -72,7 +80,7 @@ public class Program
         }
         else if (command.StartsWith("migration:revert"))
         {
-            migration.ExecuteMigration("Down");
+            migration.ExecuteMigration(Method.Down);
             logger.LogSuccess("MigrationReverted");
         }
         else

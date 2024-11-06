@@ -1,4 +1,4 @@
-using MyORM.Abstract;
+using MyORM;
 using MyORM.Querying.Repository;
 using Test;
 using Newtonsoft.Json;

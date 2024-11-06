@@ -1,5 +1,4 @@
-using MyORM.Abstract;
-using MyORM.Attributes;
+using MyORM;
 
 namespace Test.Migrations;
 

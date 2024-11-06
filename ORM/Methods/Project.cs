@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace MyORM.Common.Methods;
+namespace MyORM.Methods;
 
 public static class Project
 {

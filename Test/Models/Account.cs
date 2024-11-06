@@ -1,4 +1,4 @@
-﻿using MyORM.Enums;
+﻿using MyORM;
 using MyORM.Attributes;
 
 namespace Test.Models;

@@ -1,4 +1,4 @@
-﻿namespace MyORM.Attributes;
+﻿namespace MyORM;
 
 public sealed class Migration : Attribute
 {

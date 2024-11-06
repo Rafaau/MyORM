@@ -1,6 +1,4 @@
-﻿using MyORM.Enums;
-
-namespace MyORM.Attributes;
+﻿namespace MyORM.Attributes;
 
 public class Column : Attribute
 {

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Test.Models;
 using TestAPI.DTO;
-using MyORM.Abstract;
 using MyORM.Projectioner.Methods;
 using MyORM.Querying.Repository;
 using MyORM.Querying.Enums;
+using MyORM;
 
 namespace TestAPI.Controllers
 {
@@ -154,21 +154,6 @@ namespace TestAPI.Controllers
 			try
 			{
 				_userRepository.Save(userToUpdate.ToProjection<User>());
-				return Ok();
-			}
-			catch (Exception e)
-			{
-				return BadRequest(e.Message);
-			}
-		}
-
-		[HttpPut("/UpdateMany")]
-		public IActionResult UpdateMany([FromBody] UserUpdateMany usersToUpdate, string name)
-		{
-			try
-			{
-				_userRepository.Where(user => user.Name == name)
-							   .UpdateMany(usersToUpdate.ToProjection<User>());
 				return Ok();
 			}
 			catch (Exception e)

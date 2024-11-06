@@ -1,21 +1,26 @@
-﻿using MyORM.Attributes;
-using MyORM.Common.Methods;
-using MyORM.Enums;
+﻿using MyORM.Methods;
 using MyORM.Models;
+using MyORM.DBMS;
 
 namespace MyORM.CLI.Methods;
 
 internal static class MigrationFactory
 {
-	public static string ProduceMigrationContent(List<AttributeHelpers.ClassProps> types, string nameSpace, string migrationName, string snapshotContent)
+	public static string ProduceMigrationContent(
+		List<AttributeHelpers.ClassProps> types, 
+		string nameSpace, 
+		string migrationName, 
+		string snapshotContent,
+		Database databaseManagementSystem)
 	{
+		ScriptBuilder.Database = databaseManagementSystem;
+
 		var snapshotProps = AttributeHelpers.GetPropsByAttribute(typeof(Snapshot))?.LastOrDefault();
 		var method = snapshotProps?.Methods.First(x => x.Name == "GetModelsStatements");
 		var modelStatements = (List<ModelStatement>)method?.Invoke(snapshotProps?.Instance, new object[] { })!;
 
 		string content = 
-			$"using MyORM.Abstract;\r\n" + 
-			$"using MyORM.Attributes;\r\n\r\n" + 
+			$"using MyORM;\r\n" +
 			$"namespace {nameSpace}.Migrations;\r\n\r\n" +
 			$"[Migration]\r\n" + 
 			$"public partial class {migrationName} : AbstractMigration\r\n{{\r\n\t" + 
@@ -130,7 +135,6 @@ internal static class MigrationFactory
 	internal static string HandleEntityRelationPropsForUp(this string content, AttributeHelpers.ClassProps type)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
-		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
 		string propsString = "";
 		int index = 1;
@@ -143,7 +147,7 @@ internal static class MigrationFactory
 			string relationshipString = GetRelationship(prop) == Relationship.Optional 
 				? "NULL" 
 				: "NOT NULL, " +
-				$"ADD FOREIGN KEY ({prop.Name}Id) " +
+				ScriptBuilder.BuildForeignKey(type.TableName, prop) +
 				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
 				(GetCascadeOption(prop) ? " ON DELETE CASCADE" : "");
 
@@ -154,13 +158,13 @@ internal static class MigrationFactory
 		}
 
 		if (propsString != "")
-			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {type.TableName} {propsString}\");";
 
 		propsString = "";
 
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 		{
-			( propsString, tableName ) = content.GetManyToManyCreateScript(prop);
+			(propsString, string tableName) = ScriptBuilder.BuildManyToMany(content, prop);
 
 			if (!content.Contains($"CREATE TABLE {tableName}"))
 			{
@@ -176,7 +180,7 @@ internal static class MigrationFactory
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 		{
 			string propsString;
-			string tableName = content.GetManyToManyCreateScript(prop).TableName;
+			string tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
 			propsString = HandlePropertyOptions(prop, Operation.Create);
 
 			if (!snapshotContent.Contains($"CREATE TABLE {tableName}")
@@ -199,7 +203,7 @@ internal static class MigrationFactory
 		{
 			foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 			{
-				tableName = content.GetManyToManyCreateScript(prop).TableName;
+				tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
 
 				if (content.Contains($"CREATE TABLE {tableName}"))
 					content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
@@ -222,7 +226,7 @@ internal static class MigrationFactory
 			{
 				foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 				{
-					tableName = content.GetManyToManyCreateScript(prop).TableName;
+					tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
 
 					if (!snapshotContent.Contains($"CREATE TABLE {tableName}") 
 						&& (content.Contains($"CREATE TABLE {tableName}")))
@@ -243,43 +247,27 @@ internal static class MigrationFactory
 		string content = "";
 
 		if (prop.Attributes.Select(x => x.Name).Contains("PrimaryGeneratedColumn"))
-			content += $"{prop.Name} INT AUTO_INCREMENT NOT NULL, PRIMARY KEY ({prop.Name})";
+			ScriptBuilder.BuildPrimaryKey(ref content, prop);
 		else if (prop.Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
 		{
 			string relationshipString = GetRelationship(prop) == Relationship.Optional
 				? "NULL"
 				: "NOT NULL, " +
-				$"ADD FOREIGN KEY ({prop.Name}Id) " +
+				ScriptBuilder.BuildForeignKey(prop.ParentClass.TableName, prop) +
 				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
 				(GetCascadeOption(prop) ? " ON DELETE CASCADE" : "");
 
 			content += $"{prop.ColumnName} INT UNIQUE {relationshipString}";
 		}
 		else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToOne"))
-			content += $"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} FOREIGN KEY ({prop.ColumnName}) REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
+			content += $"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} {ScriptBuilder.BuildForeignKey(prop.ParentClass.TableName, prop).Replace("ADD", "")} REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
         else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToMany"))
 		{
-			content = content.GetManyToManyCreateScript(prop).Content;
+			content = ScriptBuilder.BuildManyToMany(content, prop).Content;
 		}
         else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{
-			switch (prop.Type.ToString())
-			{
-				case "System.Int32":
-					content += $"{prop.Name} INT";
-					break;
-				case "System.String":
-					content += $"{prop.Name} VARCHAR(255)";
-					break;
-				case "System.DateTime":
-					content += $"{prop.Name} DATETIME";
-					break;
-				case "System.Boolean":
-					content += $"{prop.Name} BOOLEAN";
-					break;
-				default:
-					break;
-			}
+			ScriptBuilder.GetDataType(ref content, prop);
 		}
 
 		return content;
@@ -340,33 +328,6 @@ internal static class MigrationFactory
 			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
 
 		return content;
-	}
-
-	internal static (string Content, string TableName) GetManyToManyCreateScript(this string content, AttributeHelpers.Property prop)
-	{
-		string script = "";
-		string currentModelName = prop.ParentClass.ClassName;
-		string relationModelName = prop.Type.GetGenericArguments()[0].Name;
-		string relationPropName = prop.Type
-			.GetGenericArguments()[0]
-			.GetProperties()
-			.Where(x => x.HasAttribute("ManyToMany"))
-			.First().Name;
-		List<string> names = new() { currentModelName, relationModelName };
-		names.Sort();
-		string tableName = $"{names[0].ToLower()}{prop.Name}{names[1]}";
-		string secondTableName = $"{names[0].ToLower()}{relationPropName}{names[1]}";
-		names = new() { tableName, secondTableName };
-		names.Sort();
-		if (currentModelName == relationModelName)
-			relationModelName += "1";
-
-		script += $"({currentModelName}Id INT NOT NULL, {relationModelName}Id INT NOT NULL, " +
-		$"CONSTRAINT PK_{names[0]} PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
-		$"CONSTRAINT FK_{names[0]}_{currentModelName}s_{currentModelName}Id FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
-		$"CONSTRAINT FK_{names[0]}_{relationModelName}s_{relationModelName}Id FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace('1', ' ').Trim().ToLower()}s(Id) ON DELETE CASCADE)";
-
-		return (script, names[0]);
 	}
 
 	private static bool GetCascadeOption(AttributeHelpers.Property property)
