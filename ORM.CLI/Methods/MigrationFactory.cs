@@ -1,6 +1,7 @@
 ﻿using MyORM.Methods;
 using MyORM.Models;
 using MyORM.DBMS;
+using Microsoft.Identity.Client;
 
 namespace MyORM.CLI.Methods;
 
@@ -105,10 +106,8 @@ internal static class MigrationFactory
 	internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
-		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
-		string propsString = "";
-		int index = 1;
+		List<string> propsString = new();
 
 		var properties =
 			type.Properties.Where(x => x.Attributes.Any(attribute => 
@@ -120,14 +119,14 @@ internal static class MigrationFactory
 
 
 		foreach (var prop in properties)
-		{
-			propsString += HandlePropertyOptions(prop, Operation.Create);
-			if (index != properties.Count())
-				propsString += ", ";
-			index++;
-		}
+			propsString.Add($"\r\n\t\t\t\t{HandlePropertyOptions(prop, Operation.Create)}");
 
-		content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} ({propsString})\");";
+		content += 
+			$"\r\n\t\tdbHandler.Execute(" +
+			$"\r\n\t\t\t@\"CREATE TABLE {type.TableName} (" +
+			$"{string.Join(", ", propsString)}" +
+			$"\r\n\t\t\t)\"" +
+			$"\r\n\t\t);";
 
 		return content;
 	}
@@ -136,8 +135,7 @@ internal static class MigrationFactory
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 
-		string propsString = "";
-		int index = 1;
+		List<string> propsString = new();
 
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => 
 			x.FullName!.Contains("OneToOne") ||
@@ -153,23 +151,31 @@ internal static class MigrationFactory
 
 			string unique = !prop.Attributes.Any(x => x.FullName!.Contains("ManyToOne")) ? " UNIQUE" : "";
 
-			propsString += $"ADD {prop.Name}Id INT{unique} {relationshipString}";
+			propsString.Add($"\r\n\t\t\t\tADD {prop.Name}Id INT{unique} {relationshipString}");
 				
 		}
 
-		if (propsString != "")
-			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {type.TableName} {propsString}\");";
+		if (propsString.Any())
+			content +=
+				$"\r\n\t\tdbHandler.Execute(" +
+				$"\r\n\t\t\t@\"ALTER TABLE {type.TableName} " +
+				$"{string.Join("", propsString)}\"" +
+				$"\r\n\t\t\t);";
 
-		propsString = "";
+		propsString.Clear();
 
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 		{
-			(propsString, string tableName) = ScriptBuilder.BuildManyToMany(content, prop);
+			(string props, string tableName) = ScriptBuilder.BuildManyToMany(prop);
 
 			if (!content.Contains($"CREATE TABLE {tableName}"))
-			{
-				content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} {propsString}\");";
-			}
+				content +=
+					$"\r\n\t\tdbHandler.Execute(" +
+					$"\r\n\t\t\t@\"CREATE TABLE {type.TableName} " +
+					$"{props}\"" +
+					$"\r\n\t\t\t);";
+
+			propsString.Clear();
 		}
 
 		return content;
@@ -180,12 +186,16 @@ internal static class MigrationFactory
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 		{
 			string propsString;
-			string tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
+			string tableName = ScriptBuilder.BuildManyToMany(prop).TableName;
 			propsString = HandlePropertyOptions(prop, Operation.Create);
 
 			if (!snapshotContent.Contains($"CREATE TABLE {tableName}")
 				&& !content.Contains($"CREATE TABLE {tableName}"))
-				content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} {propsString}\");";
+				content +=
+					$"\r\n\t\tdbHandler.Execute(" +
+					$"\r\n\t\t\t@\"CREATE TABLE {type.TableName} " +
+					$"{propsString}\"" +
+					$"\r\n\t\t\t);";
 		}
 
 		return content;
@@ -203,7 +213,7 @@ internal static class MigrationFactory
 		{
 			foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 			{
-				tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
+				tableName = ScriptBuilder.BuildManyToMany(prop).TableName;
 
 				if (content.Contains($"CREATE TABLE {tableName}"))
 					content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
@@ -226,7 +236,7 @@ internal static class MigrationFactory
 			{
 				foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 				{
-					tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
+					tableName = ScriptBuilder.BuildManyToMany(prop).TableName;
 
 					if (!snapshotContent.Contains($"CREATE TABLE {tableName}") 
 						&& (content.Contains($"CREATE TABLE {tableName}")))
@@ -263,7 +273,7 @@ internal static class MigrationFactory
 			content += $"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} {ScriptBuilder.BuildForeignKey(prop.ParentClass.TableName, prop).Replace("ADD", "")} REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
         else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToMany"))
 		{
-			content = ScriptBuilder.BuildManyToMany(content, prop).Content;
+			content = ScriptBuilder.BuildManyToMany(prop).Content;
 		}
         else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{

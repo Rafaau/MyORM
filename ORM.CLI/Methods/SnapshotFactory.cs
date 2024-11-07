@@ -59,7 +59,7 @@ internal static class SnapshotFactory
 				attribute.FullName!.Contains("OneToOne"));
 
 			int index = isRelational ? 3 : 1;
-			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create)}\"),";
+			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).RemoveFormatting()}\"),";
 			//model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
 		}
 
@@ -70,7 +70,7 @@ internal static class SnapshotFactory
 
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(y => y.FullName.Contains("ManyToMany"))))
 		{
-			string tableName = ScriptBuilder.BuildManyToMany(content, prop).TableName;
+			string tableName = ScriptBuilder.BuildManyToMany(prop).TableName;
 			
 			string currentModelName = prop.ParentClass.ClassName;
 			string relationModelName = prop.Type.GetGenericArguments()[0].Name;

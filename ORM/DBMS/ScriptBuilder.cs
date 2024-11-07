@@ -75,7 +75,7 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static (string Content, string TableName) BuildManyToMany(string content, AttributeHelpers.Property property)
+	public static (string Content, string TableName) BuildManyToMany(AttributeHelpers.Property property)
 	{
 		string script = "";
 		string onDelete = "CASCADE";
@@ -101,28 +101,36 @@ public static class ScriptBuilder
 		switch (Database)
 		{
 			case Database.MySQL:
-				script += $"({currentModelName}Id INT NOT NULL, {relationModelName}Id INT NOT NULL, " +
-				$"CONSTRAINT PK_{names[0]} PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
-				$"CONSTRAINT FK_{names[0]}_{currentModelName}s_{currentModelName}Id FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
-				$"CONSTRAINT FK_{names[0]}_{relationModelName}s_{relationModelName}Id FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE CASCADE)";
+				script += $"(" +
+				$"\r\n\t\t\t\t{currentModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\t{relationModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\tCONSTRAINT PK_{names[0]} PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
+				$"\r\n\t\t\t\tCONSTRAINT FK_{names[0]}_{currentModelName}s_{currentModelName}Id FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
+				$"\r\n\t\t\t\tCONSTRAINT FK_{names[0]}_{relationModelName}s_{relationModelName}Id FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE CASCADE)";
 				break;
 			case Database.PostgreSQL:
-				script += $"({currentModelName}Id INT NOT NULL, {relationModelName}Id INT NOT NULL, " +
-				$"PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
-				$"FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
-				$"FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE CASCADE)";
+				script += $"(" +
+				$"\r\n\t\t\t\t{currentModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\t{relationModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\tPRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
+				$"\r\n\t\t\t\tFOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
+				$"\r\n\t\t\t\tFOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE CASCADE)";
 				break;
 			case Database.MicrosoftSQLServer:
-				script += $"({currentModelName}Id INT NOT NULL, {relationModelName}Id INT NOT NULL, " +
-				$"PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
-				$"CONSTRAINT FK_{names[0]}_{currentModelName}s_{currentModelName}Id FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE {onDelete}, " +
-				$"CONSTRAINT FK_{names[0]}_{relationModelName.Replace("1", "")}s_{relationModelName}Id FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE {onDelete})";
+				script += $"(" +
+				$"\r\n\t\t\t\t{currentModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\t{relationModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\tPRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
+				$"\r\n\t\t\t\tCONSTRAINT FK_{names[0]}_{currentModelName}s_{currentModelName}Id FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE {onDelete}, " +
+				$"\r\n\t\t\t\tCONSTRAINT FK_{names[0]}_{relationModelName.Replace("1", "")}s_{relationModelName}Id FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE {onDelete})";
 				break;
 			case Database.SQLite:
-				script += $"({currentModelName}Id INT NOT NULL, {relationModelName}Id INT NOT NULL, " +
-				$"PRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
-				$"FOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
-				$"FOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE CASCADE)";
+				script += $"(" +
+				$"\r\n\t\t\t\t{currentModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\t{relationModelName}Id INT NOT NULL, " +
+				$"\r\n\t\t\t\tPRIMARY KEY ({currentModelName}Id, {relationModelName}Id), " +
+				$"\r\n\t\t\t\tFOREIGN KEY ({currentModelName}Id) REFERENCES {currentModelName.ToLower()}s(Id) ON DELETE CASCADE, " +
+				$"\r\n\t\t\t\tFOREIGN KEY ({relationModelName}Id) REFERENCES {relationModelName.Replace("1", "").ToLower()}s(Id) ON DELETE CASCADE)";
 				break;
 			default:
 				throw new Exception("Database not supported.");
@@ -239,15 +247,15 @@ public static class ScriptBuilder
 		switch (Database)
 		{
 			case Database.MySQL:
-				return $"ADD FOREIGN KEY ({property.Name}Id) ";
+				return $"\r\n\t\t\t\tADD FOREIGN KEY ({property.Name}Id) ";
 			case Database.PostgreSQL:
-				return $"ADD FOREIGN KEY ({property.Name}Id) ";
+				return $"\r\n\t\t\t\tADD FOREIGN KEY ({property.Name}Id) ";
 			case Database.MicrosoftSQLServer:
 				return 
-					$"CONSTRAINT FK_{tableName}_{property.Type.FullName.Split('.').Last().ToLower() + "s"}" +
+					$"\r\n\t\t\t\tCONSTRAINT FK_{tableName}_{property.Type.FullName.Split('.').Last().ToLower() + "s"}" +
 					$"_{property.Name}Id FOREIGN KEY ({property.Name}Id) ";
 			case Database.SQLite:
-				return $"FOREIGN KEY ({property.Name}Id) ";
+				return $"\r\n\t\t\t\tFOREIGN KEY ({property.Name}Id) ";
 			default:
 				throw new Exception("Database not supported.");
 		}
@@ -303,6 +311,14 @@ public static class ScriptBuilder
 				throw new Exception("Database not supported.");
 		}
 	}
+}
+
+public static class Extensions
+{
+    public static string RemoveFormatting(this string content)
+	{
+		return content.Replace("\r\n\t\t\t\t", "");
+	} 
 }
 
 

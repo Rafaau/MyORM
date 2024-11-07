@@ -15,15 +15,70 @@ public partial class ModelSnapshot : AbstractSnapshot
 	}
 	public override void CreateDBFromSnapshot(DbHandler dbHandler)
 	{
-		dbHandler.Execute("CREATE TABLE accounts (Id INT IDENTITY(1,1) PRIMARY KEY, Nickname NVARCHAR(255))");
-		dbHandler.Execute("CREATE TABLE posts (Id INT IDENTITY(1,1) PRIMARY KEY, SendDate DATETIME, Content NVARCHAR(255))");
-		dbHandler.Execute("CREATE TABLE tags (Id INT IDENTITY(1,1) PRIMARY KEY, Name NVARCHAR(255))");
-		dbHandler.Execute("CREATE TABLE users (Id INT IDENTITY(1,1) PRIMARY KEY, Name NVARCHAR(255), Email NVARCHAR(255))");
-		dbHandler.Execute("ALTER TABLE accounts ADD UserId INT UNIQUE NOT NULL, CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE");
-		dbHandler.Execute("ALTER TABLE posts ADD AccountId INT NOT NULL, CONSTRAINT FK_posts_accounts_AccountId FOREIGN KEY (AccountId) REFERENCES accounts(Id)");
-		dbHandler.Execute("CREATE TABLE postPostsTag (PostId INT NOT NULL, TagId INT NOT NULL, PRIMARY KEY (PostId, TagId), CONSTRAINT FK_postPostsTag_Posts_PostId FOREIGN KEY (PostId) REFERENCES posts(Id) ON DELETE CASCADE, CONSTRAINT FK_postPostsTag_Tags_TagId FOREIGN KEY (TagId) REFERENCES tags(Id) ON DELETE CASCADE)");
-		dbHandler.Execute("ALTER TABLE users ADD AccountId INT UNIQUE NULL");
-		dbHandler.Execute("CREATE TABLE userFriendsUser (UserId INT NOT NULL, User1Id INT NOT NULL, PRIMARY KEY (UserId, User1Id), CONSTRAINT FK_userFriendsUser_Users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE NO ACTION, CONSTRAINT FK_userFriendsUser_Users_User1Id FOREIGN KEY (User1Id) REFERENCES users(Id) ON DELETE NO ACTION)");
+		dbHandler.Execute(
+			@"CREATE TABLE accounts (
+				Id INT IDENTITY(1,1) PRIMARY KEY, 
+				Nickname NVARCHAR(255)
+			)"
+		);
+		dbHandler.Execute(
+			@"CREATE TABLE posts (
+				Id INT IDENTITY(1,1) PRIMARY KEY, 
+				SendDate DATETIME, 
+				Content NVARCHAR(255)
+			)"
+		);
+		dbHandler.Execute(
+			@"CREATE TABLE tags (
+				Id INT IDENTITY(1,1) PRIMARY KEY, 
+				Name NVARCHAR(255)
+			)"
+		);
+		dbHandler.Execute(
+			@"CREATE TABLE users (
+				Id INT IDENTITY(1,1) PRIMARY KEY, 
+				Name NVARCHAR(255), 
+				Email NVARCHAR(255)
+			)"
+		);
+		dbHandler.Execute(
+			@"ALTER TABLE accounts 
+				ADD UserId INT UNIQUE NOT NULL, 
+				CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"
+			);
+		dbHandler.Execute(
+			@"ALTER TABLE posts 
+				ADD AccountId INT NOT NULL, 
+				CONSTRAINT FK_posts_accounts_AccountId FOREIGN KEY (AccountId) REFERENCES accounts(Id)"
+			);
+		dbHandler.Execute(
+			@"CREATE TABLE posts (
+				PostId INT NOT NULL, 
+				TagId INT NOT NULL, 
+				PRIMARY KEY (PostId, TagId), 
+				CONSTRAINT FK_postPostsTag_Posts_PostId FOREIGN KEY (PostId) REFERENCES posts(Id) ON DELETE CASCADE, 
+				CONSTRAINT FK_postPostsTag_Tags_TagId FOREIGN KEY (TagId) REFERENCES tags(Id) ON DELETE CASCADE)"
+			);
+		dbHandler.Execute(
+			@"CREATE TABLE tags (
+				TagId INT NOT NULL, 
+				PostId INT NOT NULL, 
+				PRIMARY KEY (TagId, PostId), 
+				CONSTRAINT FK_postPostsTag_Tags_TagId FOREIGN KEY (TagId) REFERENCES tags(Id) ON DELETE CASCADE, 
+				CONSTRAINT FK_postPostsTag_Posts_PostId FOREIGN KEY (PostId) REFERENCES posts(Id) ON DELETE CASCADE)"
+			);
+		dbHandler.Execute(
+			@"ALTER TABLE users 
+				ADD AccountId INT UNIQUE NULL"
+			);
+		dbHandler.Execute(
+			@"CREATE TABLE users (
+				UserId INT NOT NULL, 
+				User1Id INT NOT NULL, 
+				PRIMARY KEY (UserId, User1Id), 
+				CONSTRAINT FK_userFriendsUser_Users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE NO ACTION, 
+				CONSTRAINT FK_userFriendsUser_Users_User1Id FOREIGN KEY (User1Id) REFERENCES users(Id) ON DELETE NO ACTION)"
+			);
 	}
 	public override List<ModelStatement> GetModelsStatements()
 	{
