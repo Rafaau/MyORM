@@ -55,12 +55,7 @@ internal static class SnapshotFactory
 			y.FullName.Contains("OneToMany") ||
 			y.FullName.Contains("ManyToMany"))))
 		{
-			bool isRelational = prop.Attributes.Any(attribute =>
-				attribute.FullName!.Contains("OneToOne"));
-
-			int index = isRelational ? 3 : 1;
-			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).RemoveFormatting()}\"),";
-			//model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).Substring(prop.Name.Length + index)}\"),";
+			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).RemoveFormatting().Substring(prop.ColumnName.Length + 1)}\"),";
 		}
 
 		model += "\r\n\t\t}";

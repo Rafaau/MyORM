@@ -171,7 +171,7 @@ internal static class MigrationFactory
 			if (!content.Contains($"CREATE TABLE {tableName}"))
 				content +=
 					$"\r\n\t\tdbHandler.Execute(" +
-					$"\r\n\t\t\t@\"CREATE TABLE {type.TableName} " +
+					$"\r\n\t\t\t@\"CREATE TABLE {tableName} " +
 					$"{props}\"" +
 					$"\r\n\t\t\t);";
 
@@ -193,7 +193,7 @@ internal static class MigrationFactory
 				&& !content.Contains($"CREATE TABLE {tableName}"))
 				content +=
 					$"\r\n\t\tdbHandler.Execute(" +
-					$"\r\n\t\t\t@\"CREATE TABLE {type.TableName} " +
+					$"\r\n\t\t\t@\"CREATE TABLE {tableName} " +
 					$"{propsString}\"" +
 					$"\r\n\t\t\t);";
 		}
@@ -278,6 +278,19 @@ internal static class MigrationFactory
         else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
 		{
 			ScriptBuilder.GetDataType(ref content, prop);
+
+			//if (prop.AttributeProps.Any(x => x.Key == "Unique" && (bool)x.Value == true))
+			//	content += operation == Operation.Create ? " UNIQUE" : $" ADD UNIQUE({prop.ColumnName})";
+
+			if (prop.AttributeProps.Any(x => x.Key == "Nullable" && (bool)x.Value == false)) 
+				content += " NOT NULL";
+
+			if (prop.AttributeProps.Any(x => x.Key == "DefaultValue" && x.Value != null))
+			{
+				var defaultValue = prop.AttributeProps.First(x => x.Key == "DefaultValue").Value;
+				string defaultValueString = defaultValue.GetType() == typeof(string) ? $"'{defaultValue}'" : defaultValue.ToString();
+				content += $" DEFAULT {defaultValueString}";
+			}
 		}
 
 		return content;
@@ -285,8 +298,7 @@ internal static class MigrationFactory
 
 	private static string HandleEntityChanges(this string content, string tableName, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement modelStatement, Method method)
 	{
-		string propsString = "";
-		int index = 1;
+		List<string> propsString = new(); 
 
 		foreach (var prop in type.Properties.Where(x => !x.Attributes.Any(
 			y => y.FullName!.Contains("OneToMany") ||
@@ -294,21 +306,28 @@ internal static class MigrationFactory
 		{
 			if (!modelStatement.Columns.Any(x => x.PropertyName == prop.Name))
 			{
-				if (index > 1)
-					propsString += ", ";
+				if (method == Method.Up)
+					propsString.Add($"ADD {HandlePropertyOptions(prop, Operation.Alter)}");
+				else
+					propsString.Add($"DROP COLUMN {prop.ColumnName}");
+			}
+
+			if (modelStatement.Columns.Any(x => x.PropertyName == prop.Name && x.ColumnName != prop.ColumnName))
+			{
+				string currentColumnName = modelStatement.Columns.First(x => x.PropertyName == prop.Name).ColumnName;
 
 				if (method == Method.Up)
-				{
-					propsString += "ADD ";
-					propsString += HandlePropertyOptions(prop, Operation.Alter);
-				}
+					content += $"\r\n\t\tdbHandler.Execute(\"{ScriptBuilder.Rename(tableName, currentColumnName, prop.ColumnName)}\");";
 				else
-				{
-					propsString += "DROP COLUMN ";
-					propsString += prop.ColumnName;
-				}
+					content += $"\r\n\t\tdbHandler.Execute(\"{ScriptBuilder.Rename(tableName, prop.ColumnName, currentColumnName)}\");";
+			}
 
-				index++;
+			if (modelStatement.Columns.Any(x => x.PropertyName == prop.Name && x.PropertyOptions != HandlePropertyOptions(prop, Operation.Create).RemoveFormatting().Substring(prop.ColumnName.Length + 1)))
+			{
+				if (method == Method.Up)
+					propsString.Add($"ALTER COLUMN {HandlePropertyOptions(prop, Operation.Alter)}");
+				else
+					propsString.Add($"ALTER COLUMN {modelStatement.Columns.First(x => x.PropertyName == prop.Name).PropertyOptions}");
 			}
 		}
 
@@ -316,26 +335,15 @@ internal static class MigrationFactory
 		{
 			if (!type.Properties.Select(x => x.Name).Contains(column.PropertyName))
 			{
-				if (index > 1)
-					propsString += ", ";
-
 				if (method == Method.Up)
-				{
-					propsString += "DROP COLUMN ";
-					propsString += column.PropertyName;
-				}
+					propsString.Add($"DROP COLUMN {column.ColumnName}");
 				else
-				{
-					propsString += "ADD ";
-					propsString += column.PropertyName + " " + column.PropertyOptions;
-				}
-
-				index++;
+					propsString.Add($"ADD {column.ColumnName} {column.PropertyOptions}");
 			}
 		}
 
-		if (propsString != "")
-			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {propsString}\");";
+		if (propsString.Count() > 0)
+			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {string.Join(", ", propsString)}\");";
 
 		return content;
 	}

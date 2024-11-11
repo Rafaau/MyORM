@@ -59,16 +59,16 @@ public static class ScriptBuilder
 		switch (Database)
 		{
 			case Database.MySQL:
-				content += $"{property.Name} INT AUTO_INCREMENT NOT NULL, PRIMARY KEY ({property.Name})";
+				content += $"{property.ColumnName} INT AUTO_INCREMENT NOT NULL, PRIMARY KEY ({property.Name})";
 				break;
 			case Database.PostgreSQL:
-				content += $"{property.Name} SERIAL PRIMARY KEY";
+				content += $"{property.ColumnName} SERIAL PRIMARY KEY";
 				break;
 			case Database.MicrosoftSQLServer:
-				content += $"{property.Name} INT IDENTITY(1,1) PRIMARY KEY";
+				content += $"{property.ColumnName} INT IDENTITY(1,1) PRIMARY KEY";
 				break;
 			case Database.SQLite:
-				content += $"{property.Name} INTEGER PRIMARY KEY AUTOINCREMENT";
+				content += $"{property.ColumnName} INTEGER PRIMARY KEY AUTOINCREMENT";
 				break;
 			default:
 				throw new Exception("Database not supported.");
@@ -147,16 +147,16 @@ public static class ScriptBuilder
 				switch (Database)
 				{
 					case Database.MySQL:
-						content += $"{property.Name} INT";
+						content += $"{property.ColumnName} INT";
 						break;
 					case Database.PostgreSQL:
-						content += $"{property.Name} INT";
+						content += $"{property.ColumnName} INT";
 						break;
 					case Database.MicrosoftSQLServer:
-						content += $"{property.Name} INT";
+						content += $"{property.ColumnName} INT";
 						break;
 					case Database.SQLite:
-						content += $"{property.Name} INTEGER";
+						content += $"{property.ColumnName} INTEGER";
 						break;
 					default:
 						throw new Exception("Database not supported.");
@@ -166,16 +166,16 @@ public static class ScriptBuilder
 				switch (Database)
 				{
 					case Database.MySQL:
-						content += $"{property.Name} VARCHAR(255)";
+						content += $"{property.ColumnName} VARCHAR(255)";
 						break;
 					case Database.PostgreSQL:
-						content += $"{property.Name} VARCHAR(255)";
+						content += $"{property.ColumnName} VARCHAR(255)";
 						break;
 					case Database.MicrosoftSQLServer:
-						content += $"{property.Name} NVARCHAR(255)";
+						content += $"{property.ColumnName} NVARCHAR(255)";
 						break;
 					case Database.SQLite:
-						content += $"{property.Name} TEXT";
+						content += $"{property.ColumnName} TEXT";
 						break;
 					default:
 						throw new Exception("Database not supported.");
@@ -185,23 +185,23 @@ public static class ScriptBuilder
 				switch (Database)
 				{
 					case Database.MySQL:
-						content += $"{property.Name} DATETIME";
+						content += $"{property.ColumnName} DATETIME";
 						break;
 					case Database.PostgreSQL:
-						content += $"{property.Name} TIMESTAMP";
+						content += $"{property.ColumnName} TIMESTAMP";
 						break;
 					case Database.MicrosoftSQLServer:
-						content += $"{property.Name} DATETIME";
+						content += $"{property.ColumnName} DATETIME";
 						break;
 					case Database.SQLite:
-						content += $"{property.Name} DATETIME";
+						content += $"{property.ColumnName} DATETIME";
 						break;
 					default:
 						throw new Exception("Database not supported.");
 				}
 				break;
 			case "System.Boolean":
-				content += $"{property.Name} BOOLEAN";
+				content += $"{property.ColumnName} BOOLEAN";
 				break;
 			default:
 				break;
@@ -311,13 +311,31 @@ public static class ScriptBuilder
 				throw new Exception("Database not supported.");
 		}
 	}
+
+	public static string Rename(string tableName, string oldColumnName, string newColumnName)
+	{
+		switch (Database)
+		{
+			case Database.MySQL:
+				return $"ALTER TABLE {tableName} CHANGE {oldColumnName} {newColumnName}";
+			case Database.PostgreSQL:
+				return $"ALTER TABLE {tableName} RENAME COLUMN {oldColumnName} TO {newColumnName}";
+			case Database.MicrosoftSQLServer:
+				return $"EXEC sp_rename '{tableName}.{oldColumnName}', '{newColumnName}', 'COLUMN'";
+			case Database.SQLite:
+				return $"ALTER TABLE {tableName} RENAME COLUMN {oldColumnName} TO {newColumnName}";
+			default:
+				throw new Exception("Database not supported.");
+		}
+	}
 }
 
 public static class Extensions
 {
     public static string RemoveFormatting(this string content)
 	{
-		return content.Replace("\r\n\t\t\t\t", "");
+		content = content.Replace("\r\n\t\t\t\t", "");
+		return content.Replace("  ", " ");
 	} 
 }
 

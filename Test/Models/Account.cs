@@ -9,7 +9,7 @@ public class Account
     [PrimaryGeneratedColumn]
     public int Id { get; set; }
 
-    [Column]
+    [Column(unique: true)]
     public string Nickname { get; set; }
 
     [OneToOne<User>(Relationship.Mandatory)]

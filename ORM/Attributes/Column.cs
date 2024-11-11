@@ -1,20 +1,30 @@
 ﻿namespace MyORM.Attributes;
 
+[AttributeUsage(AttributeTargets.Property)]
 public class Column : Attribute
 {
-	private string Name { get; set; }
+	public string Name { get; set; } = string.Empty;
+	public object DefaultValue { get; set; } = null;
+	public bool Nullable { get; set; } = true;
+	public bool Unique { get; set; } = false;
 
 	public Column() { }
 
-	public Column(string name)
+	public Column(string name = null, object defaultValue = null, bool nullable = true, bool unique = false)
 	{
 		Name = name;
+		DefaultValue = defaultValue;
+		Nullable = nullable;
+		Unique = unique;
 	}
 }
 
+[AttributeUsage(AttributeTargets.Property)]
 public sealed class PrimaryGeneratedColumn : Column
 {
 	public PrimaryGeneratedColumn() { }
+
+	public PrimaryGeneratedColumn(string name) : base(name) { }
 }
 
 [AttributeUsage(AttributeTargets.Property)]

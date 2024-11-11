@@ -199,7 +199,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 	{
 		var statement = StatementList.Find(x => x.Name == modelName);
 		string tableName = statement.TableName;
-		string? columnName = statement.Columns.Find(x => x.PropertyName == property.Name)?.ColumnName;
+		string? columnName = statement.Columns.Find(x => x.PropertyName == property.ColumnName)?.ColumnName;
 		if (columnName is not null)
 		{
 			AllColumnsList.Add(ScriptBuilder.BuildSelect(tableName, columnName));
@@ -223,7 +223,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				string columnName = relatedModel.Properties.WithNameAndAttribute(modelProps.ClassName, "OneToOne").ColumnName;
 
 				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
-				relatedModels.Add(relatedModel, (columnName, property.Name, false));
+				relatedModels.Add(relatedModel, (columnName, property.ColumnName, false));
 			}
 			else if (property.HasAttribute("OneToMany"))
 			{
@@ -231,7 +231,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				string columnName = relatedModel.Properties.WithNameAndAttribute(modelProps.ClassName, "ManyToOne").ColumnName;
 
 				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
-				relatedModels.Add(relatedModel, (columnName, property.Name, true));
+				relatedModels.Add(relatedModel, (columnName, property.ColumnName, true));
 			}
 		}
 
@@ -250,11 +250,11 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		List<string> values = new();
 		List<object> modelQueue = new();
 
-		foreach (var property in model.GetType().GetProperties())
+		foreach (var property in AttributeHelpers.GetPropsByModel(model.GetType()).Properties)
 		{
 			bool isRelational = property.HasAttribute("OneToOne");
-			var columnName = property.Name;
-			var columnValue = property.GetValue(model);
+			var columnName = property.ColumnName;
+			var columnValue = property.Value;
 
 			if ((columnValue is null && !isRelational) 
 				|| property.HasAttribute("PrimaryGeneratedColumn"))
@@ -278,7 +278,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				}
 				else
 				{
-					columnName = $"{columnName}Id";
+					columnName = $"{property.Name}Id";
 					columnValue = id;
 				}
 			}

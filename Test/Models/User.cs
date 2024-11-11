@@ -6,13 +6,13 @@ namespace Test.Models;
 [Entity("users")]
 public class User
 {
-	[PrimaryGeneratedColumn]
+	[PrimaryGeneratedColumn("UUID")]
 	public int Id { get; set; }
 
-	[Column]
+	[Column(nullable: false)]
 	public string Name { get; set; }
 
-	[Column]
+	[Column(defaultValue: "default@gmail.com")]
 	public string Email { get; set; }
 
 	[OneToOne<Account>(relationship: Relationship.Optional, cascade: true)]

@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using Microsoft.IdentityModel.Tokens;
+using System.Configuration;
 using System.Reflection;
 
 namespace MyORM.Methods;
@@ -49,11 +50,11 @@ public class AttributeHelpers
 			get
 			{
 				string attr = Attributes.Select(x => x.Name).SingleOrDefault();
-				if (attr.Contains("OneToOne") 
+				if (attr.Contains("OneToOne")
 					|| attr.Contains("ManyToOne"))
 					return $"{Name}Id";
 				else
-					return Name;
+					return (string)AttributeProps.GetAttributePropertyValue("Name") ?? Name;
 			}
 		}
 	}
@@ -96,7 +97,7 @@ public class AttributeHelpers
 						foreach (var property in type.GetProperties())
 						{
 							Dictionary<string, object> attributeProps = new();
-							foreach (var attr in property.GetCustomAttributes())
+							foreach (var attr in property.GetCustomAttributes(true))
 							{
 								foreach (var prop in attr.GetType().GetProperties())
 								{
@@ -109,11 +110,7 @@ public class AttributeHelpers
 								Name = property.Name,
 								Type = property.PropertyType,
 								Value = property.GetValue(instance),
-								Attributes = property
-									.GetCustomAttributes()
-									.ToArray()
-									.Select(x => x.GetType())
-									.ToList(),
+								Attributes = property.GetAttributes(),
 								AttributeProps = attributeProps,
 								ParentClass = GetPropsByModel(type)
 							});
@@ -169,11 +166,7 @@ public class AttributeHelpers
 					Name = property.Name,
 					Type = property.PropertyType,
 					Value = property.GetValue(instance),
-					Attributes = property
-						.GetCustomAttributes()
-						.ToArray()
-						.Select(x => x.GetType())
-						.ToList(),
+					Attributes = property.GetAttributes(),
 					AttributeProps = attributeProps,
 					ParentClass = props,
 				});
@@ -197,4 +190,16 @@ public static class HelpersExtensions
 		=> (Relationship)properties
 			.Find(x => x.Name == propertyName).AttributeProps
 			.FirstOrDefault(x => x.Key == "Relationship").Value;
+
+	public static object? GetAttributePropertyValue(this Dictionary<string, object> attributeProps, string attributeProperty)
+	{
+		var property = attributeProps.FirstOrDefault(x => x.Key == attributeProperty);
+
+		if (property.Key == null
+			|| property.Value == null
+			|| property.Value.ToString().IsNullOrEmpty())
+			return null;
+
+		return property.Value;
+	}
 }

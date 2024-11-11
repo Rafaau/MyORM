@@ -36,9 +36,9 @@ public partial class ModelSnapshot : AbstractSnapshot
 		);
 		dbHandler.Execute(
 			@"CREATE TABLE users (
-				Id INT IDENTITY(1,1) PRIMARY KEY, 
-				Name NVARCHAR(255), 
-				Email NVARCHAR(255)
+				UUID INT IDENTITY(1,1) PRIMARY KEY, 
+				Name NVARCHAR(255) NOT NULL, 
+				Email NVARCHAR(255) DEFAULT 'default@gmail.com'
 			)"
 		);
 		dbHandler.Execute(
@@ -52,7 +52,7 @@ public partial class ModelSnapshot : AbstractSnapshot
 				CONSTRAINT FK_posts_accounts_AccountId FOREIGN KEY (AccountId) REFERENCES accounts(Id)"
 			);
 		dbHandler.Execute(
-			@"CREATE TABLE posts (
+			@"CREATE TABLE postPostsTag (
 				PostId INT NOT NULL, 
 				TagId INT NOT NULL, 
 				PRIMARY KEY (PostId, TagId), 
@@ -60,19 +60,11 @@ public partial class ModelSnapshot : AbstractSnapshot
 				CONSTRAINT FK_postPostsTag_Tags_TagId FOREIGN KEY (TagId) REFERENCES tags(Id) ON DELETE CASCADE)"
 			);
 		dbHandler.Execute(
-			@"CREATE TABLE tags (
-				TagId INT NOT NULL, 
-				PostId INT NOT NULL, 
-				PRIMARY KEY (TagId, PostId), 
-				CONSTRAINT FK_postPostsTag_Tags_TagId FOREIGN KEY (TagId) REFERENCES tags(Id) ON DELETE CASCADE, 
-				CONSTRAINT FK_postPostsTag_Posts_PostId FOREIGN KEY (PostId) REFERENCES posts(Id) ON DELETE CASCADE)"
-			);
-		dbHandler.Execute(
 			@"ALTER TABLE users 
 				ADD AccountId INT UNIQUE NULL"
 			);
 		dbHandler.Execute(
-			@"CREATE TABLE users (
+			@"CREATE TABLE userFriendsUser (
 				UserId INT NOT NULL, 
 				User1Id INT NOT NULL, 
 				PRIMARY KEY (UserId, User1Id), 
@@ -86,16 +78,16 @@ public partial class ModelSnapshot : AbstractSnapshot
 
 		models.Add(new ModelStatement("Account", "accounts", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "Id", "Id INT IDENTITY(1,1) PRIMARY KEY"),
-			new ColumnStatement("Nickname", "Nickname", "Nickname NVARCHAR(255)"),
-			new ColumnStatement("User", "UserId", "UserId INT UNIQUE NOT NULL, CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"),
+			new ColumnStatement("Id", "Id", "INT IDENTITY(1,1) PRIMARY KEY"),
+			new ColumnStatement("Nickname", "Nickname", "NVARCHAR(255)"),
+			new ColumnStatement("User", "UserId", "INT UNIQUE NOT NULL, CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"),
 		}));
 		models.Add(new ModelStatement("Post", "posts", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "Id", "Id INT IDENTITY(1,1) PRIMARY KEY"),
-			new ColumnStatement("SendDate", "SendDate", "SendDate DATETIME"),
-			new ColumnStatement("Content", "Content", "Content NVARCHAR(255)"),
-			new ColumnStatement("Account", "AccountId", "AccountId INT,  CONSTRAINT FK_posts_accounts_AccountId FOREIGN KEY (AccountId)  REFERENCES accounts(Id)"),
+			new ColumnStatement("Id", "Id", "INT IDENTITY(1,1) PRIMARY KEY"),
+			new ColumnStatement("SendDate", "SendDate", "DATETIME"),
+			new ColumnStatement("Content", "Content", "NVARCHAR(255)"),
+			new ColumnStatement("Account", "AccountId", "INT, CONSTRAINT FK_posts_accounts_AccountId FOREIGN KEY (AccountId) REFERENCES accounts(Id)"),
 		},
 		new List<RelationStatement>()
 		{
@@ -103,8 +95,8 @@ public partial class ModelSnapshot : AbstractSnapshot
 		}));
 		models.Add(new ModelStatement("Tag", "tags", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "Id", "Id INT IDENTITY(1,1) PRIMARY KEY"),
-			new ColumnStatement("Name", "Name", "Name NVARCHAR(255)"),
+			new ColumnStatement("Id", "Id", "INT IDENTITY(1,1) PRIMARY KEY"),
+			new ColumnStatement("Name", "Name", "NVARCHAR(255)"),
 		},
 		new List<RelationStatement>()
 		{
@@ -112,10 +104,10 @@ public partial class ModelSnapshot : AbstractSnapshot
 		}));
 		models.Add(new ModelStatement("User", "users", new List<ColumnStatement>()
 		{
-			new ColumnStatement("Id", "Id", "Id INT IDENTITY(1,1) PRIMARY KEY"),
-			new ColumnStatement("Name", "Name", "Name NVARCHAR(255)"),
-			new ColumnStatement("Email", "Email", "Email NVARCHAR(255)"),
-			new ColumnStatement("Account", "AccountId", "AccountId INT UNIQUE NULL"),
+			new ColumnStatement("Id", "UUID", "INT IDENTITY(1,1) PRIMARY KEY"),
+			new ColumnStatement("Name", "Name", "NVARCHAR(255) NOT NULL"),
+			new ColumnStatement("Email", "Email", "NVARCHAR(255) DEFAULT 'default@gmail.com'"),
+			new ColumnStatement("Account", "AccountId", "INT UNIQUE NULL"),
 		},
 		new List<RelationStatement>()
 		{
