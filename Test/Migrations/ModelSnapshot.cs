@@ -18,7 +18,7 @@ public partial class ModelSnapshot : AbstractSnapshot
 		dbHandler.Execute(
 			@"CREATE TABLE accounts (
 				Id INT IDENTITY(1,1) PRIMARY KEY, 
-				Nickname NVARCHAR(255)
+				Nickname NVARCHAR(255) UNIQUE
 			)"
 		);
 		dbHandler.Execute(
@@ -79,7 +79,7 @@ public partial class ModelSnapshot : AbstractSnapshot
 		models.Add(new ModelStatement("Account", "accounts", new List<ColumnStatement>()
 		{
 			new ColumnStatement("Id", "Id", "INT IDENTITY(1,1) PRIMARY KEY"),
-			new ColumnStatement("Nickname", "Nickname", "NVARCHAR(255)"),
+			new ColumnStatement("Nickname", "Nickname", "NVARCHAR(255) UNIQUE"),
 			new ColumnStatement("User", "UserId", "INT UNIQUE NOT NULL, CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"),
 		}));
 		models.Add(new ModelStatement("Post", "posts", new List<ColumnStatement>()

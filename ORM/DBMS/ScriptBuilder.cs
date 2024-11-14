@@ -328,6 +328,55 @@ public static class ScriptBuilder
 				throw new Exception("Database not supported.");
 		}
 	}
+
+	public static string HandlePropertyOptions(AttributeHelpers.Property prop, Operation operation)
+	{
+		string content = "";
+
+		if (prop.Attributes.Select(x => x.Name).Contains("PrimaryGeneratedColumn"))
+			BuildPrimaryKey(ref content, prop);
+		else if (prop.Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
+		{
+			string relationshipString = prop.HasRelationship(Relationship.Optional)
+				? "NULL"
+				: "NOT NULL, " +
+				BuildForeignKey(prop.ParentClass.TableName, prop) +
+				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
+				(prop.HasCascadeOption() ? " ON DELETE CASCADE" : "");
+
+			content += $"{prop.ColumnName} INT UNIQUE {relationshipString}";
+		}
+		else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToOne"))
+			content += 
+				$"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} " +
+				$"{BuildForeignKey(prop.ParentClass.TableName, prop).Replace("ADD", "")} " +
+				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
+		else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToMany"))
+		{
+			content = BuildManyToMany(prop).Content;
+		}
+		else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
+		{
+			GetDataType(ref content, prop);
+
+			if (prop.AttributeProps.Any(x => x.Key == "Unique"
+				&& (bool)x.Value == true)
+				&& operation == Operation.Create)
+				content += " UNIQUE";
+
+			if (prop.AttributeProps.Any(x => x.Key == "Nullable" && (bool)x.Value == false))
+				content += " NOT NULL";
+
+			if (prop.AttributeProps.Any(x => x.Key == "DefaultValue" && x.Value != null))
+			{
+				var defaultValue = prop.AttributeProps.First(x => x.Key == "DefaultValue").Value;
+				string defaultValueString = defaultValue.GetType() == typeof(string) ? $"'{defaultValue}'" : defaultValue.ToString();
+				content += $" DEFAULT {defaultValueString}";
+			}
+		}
+
+		return content;
+	}
 }
 
 public static class Extensions
@@ -337,6 +386,11 @@ public static class Extensions
 		content = content.Replace("\r\n\t\t\t\t", "");
 		return content.Replace("  ", " ");
 	} 
+
+	public static string RemoveUnique(this string content)
+	{
+		return content.Replace(" UNIQUE", "");
+	}
 }
 
 

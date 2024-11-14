@@ -44,7 +44,6 @@ public class AttributeHelpers
 		public List<Type> Attributes { get; set; }
 		public Dictionary<string, object>? AttributeProps { get; set; }
 		public ClassProps ParentClass { get; set; }
-
 		public string ColumnName
 		{
 			get
@@ -201,5 +200,31 @@ public static class HelpersExtensions
 			return null;
 
 		return property.Value;
+	}
+	public static MyORM.Relationship GetRelationship(this AttributeHelpers.Property property)
+	{
+		var relationshipAttr = property.AttributeProps.FirstOrDefault(x => x.Key == "Relationship").Value;
+		return relationshipAttr != null ? (Relationship)relationshipAttr : Relationship.Mandatory;
+	}
+
+	public static bool HasRelationship(this AttributeHelpers.Property property, Relationship relationship)
+		=> property.GetRelationship() == relationship;
+
+	public static bool HasCascadeOption(this AttributeHelpers.Property property)
+	{
+		bool cascade = false;
+
+		var baseProps = AttributeHelpers.GetPropsByModel(property.Type);
+
+		var cascadeAttr = baseProps.Properties
+			.Find(x => x.Type.Name == property.ParentClass.ClassName)?.AttributeProps?
+			.FirstOrDefault(x => x.Key == "Cascade").Value;
+
+		if (cascadeAttr != null)
+		{
+			cascade = (bool)cascadeAttr;
+		}
+
+		return cascade;
 	}
 }

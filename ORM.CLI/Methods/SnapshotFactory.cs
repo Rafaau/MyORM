@@ -1,4 +1,5 @@
-﻿using MyORM.DBMS;
+﻿using MyORM;
+using MyORM.DBMS;
 using MyORM.Methods;
 
 namespace MyORM.CLI.Methods;
@@ -55,7 +56,11 @@ internal static class SnapshotFactory
 			y.FullName.Contains("OneToMany") ||
 			y.FullName.Contains("ManyToMany"))))
 		{
-			model += $"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{MigrationFactory.HandlePropertyOptions(prop, MigrationFactory.Operation.Create).RemoveFormatting().Substring(prop.ColumnName.Length + 1)}\"),";
+			model += 
+				$"\r\n\t\t\tnew ColumnStatement(\"{prop.Name}\", \"{prop.ColumnName}\", \"{ScriptBuilder
+					.HandlePropertyOptions(prop, Operation.Create)
+					.RemoveFormatting()
+					.Substring(prop.ColumnName.Length + 1)}\"),";
 		}
 
 		model += "\r\n\t\t}";

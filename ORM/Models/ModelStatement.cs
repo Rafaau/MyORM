@@ -1,4 +1,7 @@
-﻿namespace MyORM.Models;
+﻿using MyORM.DBMS;
+using static MyORM.Methods.AttributeHelpers;
+
+namespace MyORM.Models;
 
 public class ModelStatement
 {
@@ -32,5 +35,24 @@ public static class Extensions
 {
 	public static ModelStatement GetModelStatement(this List<ModelStatement> statements, string name) 
 		=> statements.Where(x => x.Name == name).SingleOrDefault();
+
+	public static bool ContainsProperty(this List<ColumnStatement> columns, Property property) 
+		=> columns.Any(y => y.PropertyName == property.Name);
+
+	public static bool ColumnNameHasChanged(this List<ColumnStatement> columns, Property property)
+		=> columns.Any(x => x.PropertyName == property.Name && x.ColumnName != property.ColumnName);
+
+	public static bool PropertyOptionsHaveChanged(this List<ColumnStatement> columns, Property property)
+		=> columns.Any(x => x.PropertyName == property.Name 
+		&& x.PropertyOptions.RemoveUnique() != ScriptBuilder
+			.HandlePropertyOptions(property, Operation.Create)
+			.RemoveFormatting()
+			.RemoveUnique()
+			.Substring(property.ColumnName.Length + 1));
+
+	public static bool ColumnBecameUnique(this List<ColumnStatement> columns, Property property)
+		=> columns.Any(x => x.PropertyName == property.Name 
+			&& !x.PropertyOptions.Contains("UNIQUE") 
+			&& ScriptBuilder.HandlePropertyOptions(property, Operation.Create).Contains("UNIQUE"));
 }
 

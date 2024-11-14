@@ -1,7 +1,7 @@
-﻿using MyORM.Methods;
+﻿using MyORM;
+using MyORM.Methods;
 using MyORM.Models;
 using MyORM.DBMS;
-using Microsoft.Identity.Client;
 
 namespace MyORM.CLI.Methods;
 
@@ -89,7 +89,7 @@ internal static class MigrationFactory
 
 		foreach (var prop in properties)
 		{
-			propsString += HandlePropertyOptions(prop, Operation.Create);
+			propsString += ScriptBuilder.HandlePropertyOptions(prop, Operation.Create);
 			if (index != properties.Count())
 				propsString += ", ";
 			index++;
@@ -119,7 +119,7 @@ internal static class MigrationFactory
 
 
 		foreach (var prop in properties)
-			propsString.Add($"\r\n\t\t\t\t{HandlePropertyOptions(prop, Operation.Create)}");
+			propsString.Add($"\r\n\t\t\t\t{ScriptBuilder.HandlePropertyOptions(prop, Operation.Create)}");
 
 		content += 
 			$"\r\n\t\tdbHandler.Execute(" +
@@ -142,12 +142,12 @@ internal static class MigrationFactory
 			x.FullName!.Contains("ManyToOne")))
 		)
 		{
-			string relationshipString = GetRelationship(prop) == Relationship.Optional 
+			string relationshipString = prop.HasRelationship(Relationship.Optional)
 				? "NULL" 
 				: "NOT NULL, " +
 				ScriptBuilder.BuildForeignKey(type.TableName, prop) +
 				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
-				(GetCascadeOption(prop) ? " ON DELETE CASCADE" : "");
+				(prop.HasCascadeOption() ? " ON DELETE CASCADE" : "");
 
 			string unique = !prop.Attributes.Any(x => x.FullName!.Contains("ManyToOne")) ? " UNIQUE" : "";
 
@@ -187,7 +187,7 @@ internal static class MigrationFactory
 		{
 			string propsString;
 			string tableName = ScriptBuilder.BuildManyToMany(prop).TableName;
-			propsString = HandlePropertyOptions(prop, Operation.Create);
+			propsString = ScriptBuilder.HandlePropertyOptions(prop, Operation.Create);
 
 			if (!snapshotContent.Contains($"CREATE TABLE {tableName}")
 				&& !content.Contains($"CREATE TABLE {tableName}"))
@@ -252,50 +252,6 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	internal static string HandlePropertyOptions(AttributeHelpers.Property prop, Operation operation)
-	{
-		string content = "";
-
-		if (prop.Attributes.Select(x => x.Name).Contains("PrimaryGeneratedColumn"))
-			ScriptBuilder.BuildPrimaryKey(ref content, prop);
-		else if (prop.Attributes.Select(x => x.Name).Single().Contains("OneToOne"))
-		{
-			string relationshipString = GetRelationship(prop) == Relationship.Optional
-				? "NULL"
-				: "NOT NULL, " +
-				ScriptBuilder.BuildForeignKey(prop.ParentClass.TableName, prop) +
-				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
-				(GetCascadeOption(prop) ? " ON DELETE CASCADE" : "");
-
-			content += $"{prop.ColumnName} INT UNIQUE {relationshipString}";
-		}
-		else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToOne"))
-			content += $"{prop.ColumnName} INT, {(operation == Operation.Alter ? "ADD" : "")} {ScriptBuilder.BuildForeignKey(prop.ParentClass.TableName, prop).Replace("ADD", "")} REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)";
-        else if (prop.Attributes.Select(x => x.Name).Single().Contains("ManyToMany"))
-		{
-			content = ScriptBuilder.BuildManyToMany(prop).Content;
-		}
-        else if (prop.Attributes.Select(x => x.Name).Contains("Column"))
-		{
-			ScriptBuilder.GetDataType(ref content, prop);
-
-			//if (prop.AttributeProps.Any(x => x.Key == "Unique" && (bool)x.Value == true))
-			//	content += operation == Operation.Create ? " UNIQUE" : $" ADD UNIQUE({prop.ColumnName})";
-
-			if (prop.AttributeProps.Any(x => x.Key == "Nullable" && (bool)x.Value == false)) 
-				content += " NOT NULL";
-
-			if (prop.AttributeProps.Any(x => x.Key == "DefaultValue" && x.Value != null))
-			{
-				var defaultValue = prop.AttributeProps.First(x => x.Key == "DefaultValue").Value;
-				string defaultValueString = defaultValue.GetType() == typeof(string) ? $"'{defaultValue}'" : defaultValue.ToString();
-				content += $" DEFAULT {defaultValueString}";
-			}
-		}
-
-		return content;
-	}
-
 	private static string HandleEntityChanges(this string content, string tableName, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement modelStatement, Method method)
 	{
 		List<string> propsString = new(); 
@@ -304,15 +260,15 @@ internal static class MigrationFactory
 			y => y.FullName!.Contains("OneToMany") ||
 			y.FullName!.Contains("ManyToMany"))))
 		{
-			if (!modelStatement.Columns.Any(x => x.PropertyName == prop.Name))
+			if (!modelStatement.Columns.ContainsProperty(prop))
 			{
 				if (method == Method.Up)
-					propsString.Add($"ADD {HandlePropertyOptions(prop, Operation.Alter)}");
+					propsString.Add($"ADD {ScriptBuilder.HandlePropertyOptions(prop, Operation.Alter)}");
 				else
 					propsString.Add($"DROP COLUMN {prop.ColumnName}");
 			}
 
-			if (modelStatement.Columns.Any(x => x.PropertyName == prop.Name && x.ColumnName != prop.ColumnName))
+			if (modelStatement.Columns.ColumnNameHasChanged(prop))
 			{
 				string currentColumnName = modelStatement.Columns.First(x => x.PropertyName == prop.Name).ColumnName;
 
@@ -322,12 +278,28 @@ internal static class MigrationFactory
 					content += $"\r\n\t\tdbHandler.Execute(\"{ScriptBuilder.Rename(tableName, prop.ColumnName, currentColumnName)}\");";
 			}
 
-			if (modelStatement.Columns.Any(x => x.PropertyName == prop.Name && x.PropertyOptions != HandlePropertyOptions(prop, Operation.Create).RemoveFormatting().Substring(prop.ColumnName.Length + 1)))
+			if (modelStatement.Columns.PropertyOptionsHaveChanged(prop))
 			{
 				if (method == Method.Up)
-					propsString.Add($"ALTER COLUMN {HandlePropertyOptions(prop, Operation.Alter)}");
+					propsString.Add($"ALTER COLUMN {ScriptBuilder.HandlePropertyOptions(prop, Operation.Alter)}");
 				else
 					propsString.Add($"ALTER COLUMN {modelStatement.Columns.First(x => x.PropertyName == prop.Name).PropertyOptions}");
+			}
+
+			if (modelStatement.Columns.ColumnBecameUnique(prop))
+			{
+				if (method == Method.Up)
+					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} ADD CONSTRAINT {prop.ColumnName}_unique UNIQUE ({prop.ColumnName})\");";
+				else
+					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} DROP CONSTRAINT {prop.ColumnName}_unique\");";
+			}
+
+			if (!modelStatement.Columns.ColumnBecameUnique(prop))
+			{
+				if (method == Method.Up)
+					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} DROP CONSTRAINT {prop.ColumnName}_unique\");";
+				else
+					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} ADD CONSTRAINT {prop.ColumnName}_unique UNIQUE ({prop.ColumnName})\");";
 			}
 		}
 
@@ -348,40 +320,10 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static bool GetCascadeOption(AttributeHelpers.Property property)
-	{
-		bool cascade = false;
-
-		var baseProps = AttributeHelpers.GetPropsByModel(property.Type);
-
-		var cascadeAttr = baseProps.Properties
-			.Find(x => x.Type.Name == property.ParentClass.ClassName)?.AttributeProps?
-			.FirstOrDefault(x => x.Key == "Cascade").Value;
-
-        if (cascadeAttr != null)
-		{
-			cascade = (bool)cascadeAttr;
-		}
-			
-		return cascade;
-	}
-
-	private static Relationship GetRelationship(AttributeHelpers.Property property)
-	{
-		var relationshipAttr = property.AttributeProps.FirstOrDefault(x => x.Key == "Relationship").Value;
-		return relationshipAttr != null ? (Relationship)relationshipAttr : Relationship.Mandatory;
-	}
-
 	private enum Method
 	{
 		Up,
 		Down
-	}
-
-	internal enum Operation
-	{
-		Create,
-		Alter
 	}
 
 	internal enum Destination
