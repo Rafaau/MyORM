@@ -25,7 +25,6 @@ public class AttributeHelpers
 		public List<Property> Properties { get; set; } = new List<Property>();
 		public List<MethodInfo> Methods { get; set; } = new List<MethodInfo>();
 		public object? Instance { get; set; }
-
 		public string TableName
 		{
 			get
@@ -34,6 +33,14 @@ public class AttributeHelpers
 				return name != null ? name.First().Value.ToString() : ClassName + "s";
 			}
 		}
+		public string PrimaryKeyColumnName
+		{
+            get
+			{
+                var key = Properties.Where(x => x.Attributes.Any(y => y.Name == "PrimaryGeneratedColumn"));
+                return key != null ? key.First().ColumnName : "Id";
+            }
+        }
 	}
 
 	public class Property
@@ -54,6 +61,13 @@ public class AttributeHelpers
 					return $"{Name}Id";
 				else
 					return (string)AttributeProps.GetAttributePropertyValue("Name") ?? Name;
+			}
+		}
+		public ClassProps RelatedClass
+		{
+			get
+			{
+				return GetPropsByModel(Type);
 			}
 		}
 	}

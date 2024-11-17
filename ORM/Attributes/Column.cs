@@ -30,25 +30,13 @@ public sealed class PrimaryGeneratedColumn : Column
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class OneToOne<T> : Column where T : class
 {
-	public Type RelationModel { get; set; }
-	public Relationship Relationship { get; set; }
-	public bool Cascade { get; set; }
+	public Type RelationModel { get; set; } = null;
+	public Relationship Relationship { get; set; } = Relationship.Mandatory;
+	public bool Cascade { get; set; } = false;
 
-	public OneToOne()
-	{
-		RelationModel = typeof(T);
-		Relationship = Relationship.Mandatory;
-		Cascade = false;
-	}
+	public OneToOne() { }
 
-	public OneToOne(Relationship relationship)
-	{
-		RelationModel = typeof(T);
-		Relationship = relationship;
-		Cascade = false;
-	}
-
-	public OneToOne(Relationship relationship, bool cascade)
+	public OneToOne(Relationship relationship = Relationship.Mandatory, bool cascade = false)
 	{
 		RelationModel = typeof(T);
 		Relationship = relationship;
@@ -59,16 +47,12 @@ public sealed class OneToOne<T> : Column where T : class
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class OneToMany<T> : Column where T : class
 {
-	public Type RelationModel { get; set; }
-	public Relationship Relationship { get; set; }
+	public Type RelationModel { get; set; } = null;
+	public Relationship Relationship { get; set; } = Relationship.Optional;
 
-	public OneToMany()
-	{
-		RelationModel = typeof(T);
-		Relationship = Relationship.Optional;
-	}
+	public OneToMany() { }
 
-	public OneToMany(Relationship relationship)
+	public OneToMany(Relationship relationship = Relationship.Optional)
 	{
 		RelationModel = typeof(T);
 		Relationship = relationship;
@@ -78,16 +62,12 @@ public sealed class OneToMany<T> : Column where T : class
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class ManyToOne<T> : Column where T : class
 {
-	public Type RelationModel { get; set; }
-	public Relationship Relationship { get; set; }
+	public Type RelationModel { get; set; } = null;
+	public Relationship Relationship { get; set; } = Relationship.Mandatory;
 
-	public ManyToOne()
-	{
-		RelationModel = typeof(T);
-		Relationship = Relationship.Mandatory;
-	}
+    public ManyToOne() { }
 
-	public ManyToOne(Relationship relationship)
+    public ManyToOne(Relationship relationship = Relationship.Mandatory)
 	{
 		RelationModel = typeof(T);
 		Relationship = relationship;
@@ -97,16 +77,12 @@ public sealed class ManyToOne<T> : Column where T : class
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class ManyToMany<T> : Column where T : class
 {
-	public Type RelationModel { get; set; }
-	public Relationship Relationship { get; set; }
+	public Type RelationModel { get; set; } = null;
+	public Relationship Relationship { get; set; } = Relationship.Optional;
 
-	public ManyToMany()
-	{
-		RelationModel = typeof(T);
-		Relationship = Relationship.Optional;
-	}
+	public ManyToMany() { }
 
-	public ManyToMany(Relationship relationship)
+	public ManyToMany(Relationship relationship = Relationship.Optional)
 	{
 		RelationModel = typeof(T);
 		Relationship = relationship;

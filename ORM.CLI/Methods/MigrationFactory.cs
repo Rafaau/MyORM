@@ -96,7 +96,7 @@ internal static class MigrationFactory
 		}
 
 		if (!snapshotContent.Contains($"CREATE TABLE {tableName}"))
-			content += $"\r\n\t\tdbHandler.Execute(\"CREATE TABLE {tableName} ({propsString})\");";
+			content += $"\r\n\t\tdbHandler.Execute(@\"CREATE TABLE {tableName} ({propsString})\");";
 		else
 			content = content.HandleEntityChanges(tableName, type, snapshotContent, modelStatement, Method.Up);
 
@@ -146,7 +146,7 @@ internal static class MigrationFactory
 				? "NULL" 
 				: "NOT NULL, " +
 				ScriptBuilder.BuildForeignKey(type.TableName, prop) +
-				$"REFERENCES {prop.Type.FullName.Split('.').Last().ToLower() + "s"}(Id)" +
+				$"REFERENCES {prop.RelatedClass.TableName}({prop.RelatedClass.PrimaryKeyColumnName})" +
 				(prop.HasCascadeOption() ? " ON DELETE CASCADE" : "");
 
 			string unique = !prop.Attributes.Any(x => x.FullName!.Contains("ManyToOne")) ? " UNIQUE" : "";
@@ -207,7 +207,7 @@ internal static class MigrationFactory
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
 
 
-		content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+		content += $"\r\n\t\tdbHandler.Execute(@\"DROP TABLE {tableName}\");";
 
 		if (type.Properties.Any(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 		{
@@ -216,7 +216,7 @@ internal static class MigrationFactory
 				tableName = ScriptBuilder.BuildManyToMany(prop).TableName;
 
 				if (content.Contains($"CREATE TABLE {tableName}"))
-					content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"DROP TABLE {tableName}\");";
 			}
 		}
 
@@ -230,7 +230,7 @@ internal static class MigrationFactory
 
 		if (!snapshotContent.Contains($"CREATE TABLE {tableName}"))
 		{
-			content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+			content += $"\r\n\t\tdbHandler.Execute(@\"DROP TABLE {tableName}\");";
 
 			if (type.Properties.Any(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 			{
@@ -241,7 +241,7 @@ internal static class MigrationFactory
 					if (!snapshotContent.Contains($"CREATE TABLE {tableName}") 
 						&& (content.Contains($"CREATE TABLE {tableName}")))
 					{
-						content += $"\r\n\t\tdbHandler.Execute(\"DROP TABLE {tableName}\");";
+						content += $"\r\n\t\tdbHandler.Execute(@\"DROP TABLE {tableName}\");";
 					}
 				}
 			}
@@ -273,9 +273,9 @@ internal static class MigrationFactory
 				string currentColumnName = modelStatement.Columns.First(x => x.PropertyName == prop.Name).ColumnName;
 
 				if (method == Method.Up)
-					content += $"\r\n\t\tdbHandler.Execute(\"{ScriptBuilder.Rename(tableName, currentColumnName, prop.ColumnName)}\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"{ScriptBuilder.Rename(tableName, currentColumnName, prop.ColumnName)}\");";
 				else
-					content += $"\r\n\t\tdbHandler.Execute(\"{ScriptBuilder.Rename(tableName, prop.ColumnName, currentColumnName)}\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"{ScriptBuilder.Rename(tableName, prop.ColumnName, currentColumnName)}\");";
 			}
 
 			if (modelStatement.Columns.PropertyOptionsHaveChanged(prop))
@@ -289,17 +289,17 @@ internal static class MigrationFactory
 			if (modelStatement.Columns.ColumnBecameUnique(prop))
 			{
 				if (method == Method.Up)
-					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} ADD CONSTRAINT {prop.ColumnName}_unique UNIQUE ({prop.ColumnName})\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"ALTER TABLE {tableName} ADD CONSTRAINT {prop.ColumnName}_unique UNIQUE ({prop.ColumnName})\");";
 				else
-					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} DROP CONSTRAINT {prop.ColumnName}_unique\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"ALTER TABLE {tableName} DROP CONSTRAINT {prop.ColumnName}_unique\");";
 			}
 
-			if (!modelStatement.Columns.ColumnBecameUnique(prop))
+			if (modelStatement.Columns.ColumnLostUnique(prop))
 			{
 				if (method == Method.Up)
-					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} DROP CONSTRAINT {prop.ColumnName}_unique\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"ALTER TABLE {tableName} DROP CONSTRAINT {prop.ColumnName}_unique\");";
 				else
-					content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} ADD CONSTRAINT {prop.ColumnName}_unique UNIQUE ({prop.ColumnName})\");";
+					content += $"\r\n\t\tdbHandler.Execute(@\"ALTER TABLE {tableName} ADD CONSTRAINT {prop.ColumnName}_unique UNIQUE ({prop.ColumnName})\");";
 			}
 		}
 
@@ -315,7 +315,7 @@ internal static class MigrationFactory
 		}
 
 		if (propsString.Count() > 0)
-			content += $"\r\n\t\tdbHandler.Execute(\"ALTER TABLE {tableName} {string.Join(", ", propsString)}\");";
+			content += $"\r\n\t\tdbHandler.Execute(@\"ALTER TABLE {tableName} {string.Join(", ", propsString)}\");";
 
 		return content;
 	}

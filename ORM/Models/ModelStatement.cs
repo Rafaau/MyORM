@@ -54,5 +54,10 @@ public static class Extensions
 		=> columns.Any(x => x.PropertyName == property.Name 
 			&& !x.PropertyOptions.Contains("UNIQUE") 
 			&& ScriptBuilder.HandlePropertyOptions(property, Operation.Create).Contains("UNIQUE"));
+
+	public static bool ColumnLostUnique(this List<ColumnStatement> columns, Property property)
+		=> columns.Any(x => x.PropertyName == property.Name 
+		            && x.PropertyOptions.Contains("UNIQUE") 
+		            && !ScriptBuilder.HandlePropertyOptions(property, Operation.Create).Contains("UNIQUE"));
 }
 

@@ -44,7 +44,7 @@ public partial class ModelSnapshot : AbstractSnapshot
 		dbHandler.Execute(
 			@"ALTER TABLE accounts 
 				ADD UserId INT UNIQUE NOT NULL, 
-				CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE"
+				CONSTRAINT FK_accounts_users_UserId FOREIGN KEY (UserId) REFERENCES users(UUID) ON DELETE CASCADE"
 			);
 		dbHandler.Execute(
 			@"ALTER TABLE posts 
@@ -68,8 +68,8 @@ public partial class ModelSnapshot : AbstractSnapshot
 				UserId INT NOT NULL, 
 				User1Id INT NOT NULL, 
 				PRIMARY KEY (UserId, User1Id), 
-				CONSTRAINT FK_userFriendsUser_Users_UserId FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE NO ACTION, 
-				CONSTRAINT FK_userFriendsUser_Users_User1Id FOREIGN KEY (User1Id) REFERENCES users(Id) ON DELETE NO ACTION)"
+				CONSTRAINT FK_userFriendsUser_Users_UserId FOREIGN KEY (UserId) REFERENCES users(UUID) ON DELETE NO ACTION, 
+				CONSTRAINT FK_userFriendsUser_Users_User1Id FOREIGN KEY (User1Id) REFERENCES users(UUID) ON DELETE NO ACTION)"
 			);
 	}
 	public override List<ModelStatement> GetModelsStatements()

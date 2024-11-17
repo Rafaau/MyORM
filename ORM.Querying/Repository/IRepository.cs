@@ -10,6 +10,7 @@ public interface IRepository<T> where T : class, new()
 	void Delete(T model);
 	void Delete();
 	IEnumerable<T> Find();
+	T? FindOne();
 	Repository<T> OrderBy<TResult>(Expression<Func<T, TResult>> selector, OrderBy order = Enums.OrderBy.ASC);
 	Repository<T> Where(Expression<Func<T, bool>> predicate);
 	Repository<T> Select<TResult>(Expression<Func<T, TResult>> selector);
