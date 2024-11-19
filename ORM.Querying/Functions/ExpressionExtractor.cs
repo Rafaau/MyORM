@@ -1,4 +1,6 @@
-﻿using MyORM.Models;
+﻿using MyORM.DBMS;
+using MyORM.Methods;
+using MyORM.Models;
 using MyORM.Querying.Enums;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -25,7 +27,8 @@ internal static class ExpressionExtractor
 				var right = ExtractValue(equalExpression.Right);
 				var propertyName = left.Member.Name;
 				var propertyValueFormatted = FormatValueForSql(right);
-				whereClause.Append($"{propertyName} = {propertyValueFormatted}");
+                var props = AttributeHelpers.GetPropsByModel(left.Member.DeclaringType);
+                whereClause.Append($"{props.TableName}.{props.GetColumnNameByProperty(propertyName)} = {propertyValueFormatted}");
 				break;
 
 			case ExpressionType.OrElse:
@@ -41,8 +44,10 @@ internal static class ExpressionExtractor
 				var rightNotEqual = ExtractValue(notEqualExpression.Right);
 				var propertyNameNotEqual = leftNotEqual.Member.Name;
 				var propertyValueFormattedNotEqual = FormatValueForSql(rightNotEqual);
-				whereClause.Append($"{propertyNameNotEqual} != {propertyValueFormattedNotEqual}");
-				break;
+                var propsNotEqual = AttributeHelpers.GetPropsByModel(leftNotEqual.Member.DeclaringType);
+                whereClause.Append($"{propsNotEqual.TableName}.{propsNotEqual.GetColumnNameByProperty(propertyNameNotEqual)} " +
+					$"!= {propertyValueFormattedNotEqual}");
+                break;
 
 			case ExpressionType.LessThan:
 				BinaryExpression lessThanExpression = (BinaryExpression)expression;
@@ -50,8 +55,10 @@ internal static class ExpressionExtractor
 				var rightLessThan = ExtractValue(lessThanExpression.Right);
 				var propertyNameLessThan = leftLessThan.Member.Name;
 				var propertyValueFormattedLessThan = FormatValueForSql(rightLessThan);
-				whereClause.Append($"{propertyNameLessThan} < {propertyValueFormattedLessThan}");
-				break;
+                var propsLessThan = AttributeHelpers.GetPropsByModel(leftLessThan.Member.DeclaringType);
+                whereClause.Append($"{propsLessThan.TableName}.{propsLessThan.GetColumnNameByProperty(propertyNameLessThan)} " +
+                    $"< {propertyValueFormattedLessThan}");
+                break;
 
 			case ExpressionType.GreaterThan:
 				BinaryExpression greaterThanExpression = (BinaryExpression)expression;
@@ -59,8 +66,10 @@ internal static class ExpressionExtractor
 				var rightGreaterThan = ExtractValue(greaterThanExpression.Right);
 				var propertyNameGreaterThan = leftGreaterThan.Member.Name;
 				var propertyValueFormattedGreaterThan = FormatValueForSql(rightGreaterThan);
-				whereClause.Append($"{propertyNameGreaterThan} > {propertyValueFormattedGreaterThan}");
-				break;
+                var propsGreaterThan = AttributeHelpers.GetPropsByModel(leftGreaterThan.Member.DeclaringType);
+                whereClause.Append($"{propsGreaterThan.TableName}.{propsGreaterThan.GetColumnNameByProperty(propertyNameGreaterThan)} " +
+                    $"< {propertyValueFormattedGreaterThan}");
+                break;
 
 			case ExpressionType.LessThanOrEqual:
 				BinaryExpression lessThanOrEqualExpression = (BinaryExpression)expression;
@@ -68,8 +77,10 @@ internal static class ExpressionExtractor
 				var rightLessThanOrEqual = ExtractValue(lessThanOrEqualExpression.Right);
 				var propertyNameLessThanOrEqual = leftLessThanOrEqual.Member.Name;
 				var propertyValueFormattedLessThanOrEqual = FormatValueForSql(rightLessThanOrEqual);
-				whereClause.Append($"{propertyNameLessThanOrEqual} <= {propertyValueFormattedLessThanOrEqual}");
-				break;
+                var propsLessThanOrEqual = AttributeHelpers.GetPropsByModel(leftLessThanOrEqual.Member.DeclaringType);
+                whereClause.Append($"{propsLessThanOrEqual.TableName}.{propsLessThanOrEqual.GetColumnNameByProperty(propertyNameLessThanOrEqual)} " +
+                    $"< {propertyValueFormattedLessThanOrEqual}");
+                break;
 
 			case ExpressionType.GreaterThanOrEqual:
 				BinaryExpression greaterThanOrEqualExpression = (BinaryExpression)expression;
@@ -77,8 +88,10 @@ internal static class ExpressionExtractor
 				var rightGreaterThanOrEqual = ExtractValue(greaterThanOrEqualExpression.Right);
 				var propertyNameGreaterThanOrEqual = leftGreaterThanOrEqual.Member.Name;
 				var propertyValueFormattedGreaterThanOrEqual = FormatValueForSql(rightGreaterThanOrEqual);
-				whereClause.Append($"{propertyNameGreaterThanOrEqual} >= {propertyValueFormattedGreaterThanOrEqual}");
-				break;
+                var propsGreaterThanOrEqual = AttributeHelpers.GetPropsByModel(leftGreaterThanOrEqual.Member.DeclaringType);
+                whereClause.Append($"{propsGreaterThanOrEqual.TableName}.{propsGreaterThanOrEqual.GetColumnNameByProperty(propertyNameGreaterThanOrEqual)} " +
+                    $"< {propertyValueFormattedGreaterThanOrEqual}");
+                break;
 
 			default:
 				throw new NotSupportedException($"Unsupported expression type: {expression.NodeType}");
@@ -96,8 +109,9 @@ internal static class ExpressionExtractor
 				if (argument is MemberExpression memberExpression)
 				{
 					ModelStatement statement = statementsList.Find(s => s.Name == memberExpression.Member.DeclaringType.Name);
-					string column = $"{statement.TableName}.{memberExpression.Member.Name} " +
-						(parameterType == ParameterType.Select ? $"AS '{statement.TableName}.{memberExpression.Member.Name}'" : "");
+					string column = parameterType == ParameterType.OrderBy
+						? $"{statement.TableName}.{statement.GetColumnName(memberExpression.Member.Name)} "
+						: ScriptBuilder.BuildSelect(statement.TableName, statement.GetColumnName(memberExpression.Member.Name));
 					names.Add(column);
 				}
 			}

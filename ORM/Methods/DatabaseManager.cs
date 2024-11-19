@@ -50,10 +50,10 @@ internal class DatabaseManager : IDisposable
 	public void BeginTransaction()
 	{
 		if (Connection.State == ConnectionState.Closed)
-		{
 			Connection.Open();
-		}
-		Transaction = Connection.BeginTransaction();
+
+		if (Transaction is null)
+			Transaction = Connection.BeginTransaction();
 	}
 
 	public void CommitTransaction()

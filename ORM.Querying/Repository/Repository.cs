@@ -30,6 +30,13 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			return string.Join(", ", AllColumnsList);
 		}
 	}
+	private ModelStatement Statement
+	{
+		get
+		{
+			return StatementList.GetModelStatement(Model.Name);
+		}
+	}
 
 	private DataConverter dataConverter;
 
@@ -64,7 +71,19 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 	public int Create(T model)
 	{
-		return InsertInto(model);
+		try
+		{
+			DbHandler.BeginTransaction();
+			int result = InsertInto(model);
+			DbHandler.CommitTransaction();
+
+			return result;
+		}
+		catch (Exception e)
+		{
+			DbHandler.RollbackTransaction();
+			throw e;
+		}
 	}
 
 	public IEnumerable<T> Find()
@@ -199,7 +218,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 	{
 		var statement = StatementList.Find(x => x.Name == modelName);
 		string tableName = statement.TableName;
-		string? columnName = statement.Columns.Find(x => x.PropertyName == property.ColumnName)?.ColumnName;
+		string? columnName = statement.Columns.Find(x => x.ColumnName == property.ColumnName)?.ColumnName;
 		if (columnName is not null)
 		{
 			AllColumnsList.Add(ScriptBuilder.BuildSelect(tableName, columnName));
@@ -222,7 +241,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				var relatedModel = AttributeHelpers.GetPropsByModel(property.Type);
 				string columnName = relatedModel.Properties.WithNameAndAttribute(modelProps.ClassName, "OneToOne").ColumnName;
 
-				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
+				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.{property.ParentClass.PrimaryKeyColumnName} ";
 				relatedModels.Add(relatedModel, (columnName, property.ColumnName, false));
 			}
 			else if (property.HasAttribute("OneToMany"))
@@ -230,7 +249,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				var relatedModel = AttributeHelpers.GetPropsByModel(property.Type.GetGenericArguments()[0]);
 				string columnName = relatedModel.Properties.WithNameAndAttribute(modelProps.ClassName, "ManyToOne").ColumnName;
 
-				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.Id ";
+				joinString += $"LEFT JOIN {relatedModel.TableName} ON {relatedModel.TableName}.{columnName} = {modelProps.TableName}.{property.ParentClass.PrimaryKeyColumnName} ";
 				relatedModels.Add(relatedModel, (columnName, property.ColumnName, true));
 			}
 		}
@@ -248,13 +267,13 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		AttributeHelpers.ClassProps modelProps = AttributeHelpers.GetPropsByModel(model.GetType());
 		List<string> columns = new();
 		List<string> values = new();
-		List<object> modelQueue = new();
+		List<(object Value, string PropertyName)> modelQueue = new();
 
 		foreach (var property in AttributeHelpers.GetPropsByModel(model.GetType()).Properties)
 		{
 			bool isRelational = property.HasAttribute("OneToOne");
 			var columnName = property.ColumnName;
-			var columnValue = property.Value;
+			var columnValue = property.GetValue(model);
 
 			if ((columnValue is null && !isRelational) 
 				|| property.HasAttribute("PrimaryGeneratedColumn"))
@@ -273,7 +292,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 				if (relationship == Relationship.Optional)
 				{
-					modelQueue.Add(columnValue);
+					modelQueue.Add((columnValue, property.Name));
 					continue;
 				}
 				else
@@ -296,8 +315,11 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 		foreach (var modelValue in modelQueue)
 		{
-			int relInsertedId = InsertInto(modelValue, insertedId);
-			sql = $"UPDATE {modelProps.TableName} SET {modelValue.GetType().Name}Id = {relInsertedId} WHERE Id = {insertedId}";
+			string fkName = Statement.GetColumnName(modelValue.PropertyName);
+			int relInsertedId = InsertInto(modelValue.Value, insertedId);
+			sql = 
+				$"UPDATE {modelProps.TableName} SET {fkName} = {relInsertedId} " +
+				$"WHERE {Statement.GetPrimaryKeyColumnName()} = {insertedId}";
 			DbHandler.Execute(sql);
 		}
 
@@ -350,6 +372,9 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 		foreach (var property in model.GetType().GetProperties())
 		{
+			if (property.GetValue(model) is null)
+                continue;
+
 			if (parentType?.Name == property.PropertyType.Name
 				|| (property.PropertyType.GetGenericArguments().Count() > 0
 					&& parentType?.Name == property.PropertyType.GetGenericArguments()[0].Name))
@@ -357,7 +382,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				continue;
 			}
 
-			if (property.HasAttribute("OneToOne"))
+			if (property.HasAttribute("OneToOne") && property.GetValue(model) != null)
 			{
 				GetUpdateString(property.GetValue(model), updateData, model.GetType());
 				continue;
@@ -365,9 +390,9 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 			if (property.HasAttribute("OneToMany") || property.HasAttribute("ManyToMany"))
 			{
-				if (property.PropertyType.GetGenericArguments().Count() > 0
-					&& model.GetType().Name == property.PropertyType.GetGenericArguments()[0].Name)
-					continue;
+				//if (property.PropertyType.GetGenericArguments().Count() > 0
+				//	&& model.GetType().Name == property.PropertyType.GetGenericArguments()[0].Name)
+				//	continue;
 
 				foreach (var item in (IEnumerable)property.GetValue(model))
 					GetUpdateString(item, updateData, model.GetType(), (int)model.GetPropertyValue(statement.GetPrimaryKeyPropertyName()));
@@ -440,6 +465,9 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 		foreach (var obj in data)
 		{
+			if (obj is null)
+				continue;
+
 			foreach (var prop in props.WithAttributes(["ManyToMany"]))
 			{
 				var relStatement = statement.Relationships.Find(x => x.PropertyName == prop.Name);
@@ -467,7 +495,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				var sql =
 					$"SELECT {selectColumns} FROM {modelProps.TableName} {joinString} " +
 					$"LEFT JOIN {relStatement.TableName} ON {relStatement.TableName}.{relStatement.ColumnName} = {obj.GetPropertyValue("Id")} " +
-					$"WHERE {modelProps.TableName}.Id = {relStatement.TableName}.{relStatement.ColumnName_1}";
+					$"WHERE {modelProps.TableName}.{statement.GetPrimaryKeyColumnName()} = {relStatement.TableName}.{relStatement.ColumnName_1}";
 				var sqlResult = DbHandler.Query(sql);
 				var result = dataConverter.MapData(sqlResult, nestedInstance);
 

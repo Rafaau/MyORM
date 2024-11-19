@@ -1,7 +1,6 @@
 using MyORM;
 using MyORM.Querying.Repository;
 using Test;
-using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -76,7 +76,7 @@ internal class DataConverter
 			}
 
 			// Check if the object has a valid primary key
-			if ((int)obj.GetPropertyValue(pkName) != 0)
+			//if ((int)obj.GetPropertyValue(pkName) != 0)
 				result.Add(obj);
 		}
 

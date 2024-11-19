@@ -241,4 +241,13 @@ public static class HelpersExtensions
 
 		return cascade;
 	}
+
+	public static object GetValue(this AttributeHelpers.Property property, object model)
+		=> model.GetType().GetProperty(property.Name).GetValue(model);
+
+	public static string GetColumnNameByProperty(this AttributeHelpers.ClassProps props, string propertyName)
+	{
+        var property = props.Properties.Find(x => x.Name == propertyName);
+		return property.ColumnName;
+    }
 }

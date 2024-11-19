@@ -27,6 +27,9 @@ public class ModelStatement
 	public string GetPrimaryKeyPropertyName() 
 		=> Columns.Where(x => x.PropertyOptions.Contains("PRIMARY KEY")).Select(x => x.PropertyName).SingleOrDefault();
 
+	public string GetPrimaryKeyColumnName() 
+        => Columns.Where(x => x.PropertyOptions.Contains("PRIMARY KEY")).Select(x => x.ColumnName).SingleOrDefault();
+
 	public RelationStatement GetRelationStatement(string propertyName) 
 		=> Relationships.Where(x => x.PropertyName == propertyName).SingleOrDefault();
 }

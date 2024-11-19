@@ -117,12 +117,13 @@ namespace TestAPI.Controllers
 		}
 
 		[HttpGet("/GetAllExcept")]
-		public IActionResult GetAllExcept(string name, string email)
+		public IActionResult GetAllExcept(string name, string nickname)
 		{
 			try
 			{
 				var users = _userRepository
-					.Where(user => user.Name != name && user.Account.Nickname != email)
+					.Where(user => user.Name != name 
+						&& user.Account.Nickname != nickname)
 					.Find();
 				return Ok(users);
 			}
@@ -231,12 +232,15 @@ namespace TestAPI.Controllers
 				var user = _userRepository
 					.Where(u => u.Name == "TestA")
 					.FindOne();
-				//user.Account.Nickname = tagName;
-				//user.Account.Posts.Add(new Post { Content = "TestC" });
-				//user.Account.Posts[1].Tags.Add(new Tag { Name = tagName });
-				user.Account.Posts[2].Tags.Add(user.Account.Posts[0].Tags[0]);
+				
+				var user2 = _userRepository
+                    .Where(u => u.Name == "TestC")
+                    .FindOne();
+
+				user.Friends.Add(user2);
 				_userRepository.Save(user);
-				return Ok(user);
+
+				return Ok();
 			}
 			catch (Exception e)
 			{

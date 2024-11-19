@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33414.496
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyORM", "ORM\MyORM.csproj", "{3A012DAA-45DD-42BE-B2C3-ED328DADE790}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyORM.Core", "ORM\MyORM.Core.csproj", "{3A012DAA-45DD-42BE-B2C3-ED328DADE790}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{F2613650-3213-4826-8D81-3D1CB78E493C}"
 EndProject
@@ -12,8 +12,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestAPI", "TestAPI\TestAPI.csproj", "{740AD125-97E6-47FC-916C-52361B3CE774}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyORM.Querying", "ORM.Querying\MyORM.Querying.csproj", "{8B42FDAF-D391-40F8-ACDC-0BF0AA4048D7}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyORM.Specifications", "ORM.Specifications\MyORM.Specifications.csproj", "{FDD88406-23EF-4A10-9550-AEB884C16D6B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyORM.Projectioner", "ORM.Projection\MyORM.Projectioner.csproj", "{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}"
 EndProject
@@ -43,10 +41,6 @@ Global
 		{8B42FDAF-D391-40F8-ACDC-0BF0AA4048D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B42FDAF-D391-40F8-ACDC-0BF0AA4048D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B42FDAF-D391-40F8-ACDC-0BF0AA4048D7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FDD88406-23EF-4A10-9550-AEB884C16D6B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CE79A1EA-267F-4A11-AF07-E314CDB0FC8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
