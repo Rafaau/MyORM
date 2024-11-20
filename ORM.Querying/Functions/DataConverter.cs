@@ -15,7 +15,7 @@ internal class DataConverter
         StatementList = statementList;
     }
 
-    internal IEnumerable<S> MapData<S>(DataTable table, S instance = null, Type parentType = null) where S : class, new()
+    internal IEnumerable<S> MapData<S>(DataTable table, S instance = null, object parent = null) where S : class, new()
 	{
 		ModelStatement statement;
 		List<S> result = new();
@@ -38,9 +38,19 @@ internal class DataConverter
 			obj = instance is null ? new S() : Activator.CreateInstance(instance.GetType()) as S;
 			string pkName = statement.GetPrimaryKeyPropertyName();
 
+			if (parent is not null)
+			{
+				ModelStatement parentStatement = StatementList.GetModelStatement(parent.GetType().Name);
+
+                int parentPK = (int)row[$"{parentStatement.TableName}.{parentStatement.GetPrimaryKeyColumnName()}"];
+
+				if (!parentPK.Equals((int)parent.GetPropertyValue(parentStatement.GetPrimaryKeyPropertyName())))
+					continue;
+			}
+
 			foreach (var prop in props.ExceptAttributes(["ManyToMany"]))
 			{
-				if (instance is not null && prop.Name == parentType?.Name)
+				if (instance is not null && prop.Name == parent?.GetType().Name)
 					continue;
 
 				string columnName = statement.GetColumnName(prop.Name);
@@ -58,7 +68,7 @@ internal class DataConverter
 						object nestedObj = GetNestedObject(table, row, prop, statement, obj);
 
 						prop.SetValue(obj, nestedObj);
-						nestedObj.GetType().GetProperty(obj.GetType().Name).SetValue(nestedObj, obj);
+						nestedObj?.GetType().GetProperty(obj.GetType().Name).SetValue(nestedObj, obj);
 					}
 				}
 				else if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType.IsGenericType)
@@ -70,13 +80,11 @@ internal class DataConverter
 			}
 
 			// Check if the object is already in the list
-			if (result.Any(x => x.GetPropertyValue(pkName).Equals(obj.GetPropertyValue(pkName))))
-			{
+			if (result.Any(x => x.Equals(obj)))
 				continue;
-			}
 
 			// Check if the object has a valid primary key
-			//if ((int)obj.GetPropertyValue(pkName) != 0)
+			//if ((int)obj.GetPropertyValue(pkName) != 0 || !hasSelector)
 				result.Add(obj);
 		}
 
@@ -91,7 +99,7 @@ internal class DataConverter
 		object nestedInstance = Activator.CreateInstance(property.PropertyType);
 		ColumnStatement nestedColumn = statement.GetColumn(property.Name);
 
-		IEnumerable<object> mappedObjects = MapData(table, nestedInstance, parentObj.GetType());
+		IEnumerable<object> mappedObjects = MapData(table, nestedInstance, parentObj);
 		object nestedObj = mappedObjects.FirstOrDefault(
 			x => x.GetPropertyValue(statement.GetPrimaryKeyPropertyName())
 				  .Equals(row[$"{statement.TableName}.{nestedColumn.ColumnName}"])
@@ -104,7 +112,7 @@ internal class DataConverter
 	{
 		Type itemType = property.PropertyType.GetGenericArguments()[0];
 		var nestedInstance = Activator.CreateInstance(itemType);
-		var nestedList = MapData(table, nestedInstance, parentObj.GetType());
+		var nestedList = MapData(table, nestedInstance, parentObj);
 		object relListInstance = Activator.CreateInstance(property.PropertyType);
 		IList relList = (IList)relListInstance;
 
@@ -119,7 +127,12 @@ internal class DataConverter
 			if (relId != DBNull.Value && (int)relId == objId)
 			{
 				nestedItem.GetType().GetProperty(parentObj.GetType().Name).SetValue(nestedItem, parentObj);
-				relList.Add(nestedItem);
+
+				var t = nestedItem.GetPropertyValue(parentObj.GetType().Name).GetPropertyValue(pkName);
+				var t2 = parentObj.GetPropertyValue(pkName);
+
+                if (nestedItem.GetPropertyValue(parentObj.GetType().Name).GetPropertyValue(pkName).Equals(parentObj.GetPropertyValue(pkName)))
+					relList.Add(nestedItem);
 			}
 		}
 

@@ -19,6 +19,9 @@ internal class UpdateData
 	}
 	public ManyToManyData? ManyToManyData { get; set; }
 	public string WhereClause { get; set; }
+	public string PrimaryKeyColumnName { get; set; }
+	public UpdateData RelationUpdate { get; set; }
+	public string ForeignKeyColumnName { get; set; }
 }
 
 internal class ManyToManyData

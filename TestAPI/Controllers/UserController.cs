@@ -149,20 +149,6 @@ namespace TestAPI.Controllers
 			}
 		}
 
-		[HttpPut("/UpdateOne")]
-		public IActionResult Update([FromBody] UserUpdate userToUpdate)
-		{
-			try
-			{
-				_userRepository.Save(userToUpdate.ToProjection<User>());
-				return Ok();
-			}
-			catch (Exception e)
-			{
-				return BadRequest(e.Message);
-			}
-		}
-
 		[HttpDelete("/DeleteById")]
 		public IActionResult DeleteById(int id)
 		{
@@ -232,13 +218,18 @@ namespace TestAPI.Controllers
 				var user = _userRepository
 					.Where(u => u.Name == "TestA")
 					.FindOne();
+
+				
+				
 				
 				var user2 = _userRepository
                     .Where(u => u.Name == "TestC")
                     .FindOne();
 
-				user.Friends.Add(user2);
-				_userRepository.Save(user);
+                user2.Account.Posts[0].Tags.Add(new Tag { Id = 1 });
+
+                //user.Friends.Add(user2);
+                _userRepository.Save(user2);
 
 				return Ok();
 			}

@@ -16,7 +16,7 @@ public class Account
     public User User { get; set; }
 
     [OneToMany<Post>(Relationship.Optional)]
-    public List<Post> Posts { get; set; }
+    public List<Post> Posts { get; set; } = new();
 
     public Account()
     {

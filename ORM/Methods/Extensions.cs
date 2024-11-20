@@ -6,7 +6,7 @@ namespace MyORM.Methods;
 public static class Extensions
 {
 	public static List<Type> GetAttributes(this MemberInfo type) => type.GetCustomAttributes().ToArray().Select(x => x.GetType()).ToList();
-	public static object GetPropertyValue(this object obj, string propertyName) => obj.GetType().GetProperty(propertyName).GetValue(obj);
+	public static object? GetPropertyValue(this object obj, string propertyName) => obj.GetType().GetProperty(propertyName)?.GetValue(obj);
 	public static IEnumerable<PropertyInfo> ExceptAttributes(this IEnumerable<PropertyInfo> props, string[] attributes) 
 	{
 		foreach (var attr in attributes)

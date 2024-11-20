@@ -126,23 +126,45 @@ public class Repository<T> : IRepository<T> where T : class, new()
 
 			foreach (var data in updateData)
 			{
-				var sql = $"UPDATE {data.TableName} SET {string.Join(", ", data.ColumnValues)} WHERE {data.WhereClause}";
-				int affected = DbHandler.Execute(sql);
+				int affected = 0;
+				string sql;
 
-				if (affected == 0)
+				if (data.ColumnValues.Count > 0)
+				{
+                    sql = $"UPDATE {data.TableName} SET {string.Join(", ", data.ColumnValues)} WHERE {data.WhereClause}";
+                    affected = DbHandler.Execute(sql);
+                }
+				
+				if (affected == 0 && data.ColumnValues.Count > 0)
 				{
 					sql = $"INSERT INTO {data.TableName} ({string.Join(", ", data.Columns)}) VALUES ({string.Join(", ", data.Values)})";
 					DbHandler.Execute(sql);
 
+					if (data.RelationUpdate is not null 
+						&& data.ForeignKeyColumnName is not null)
+					{
+                        sql = $" {ScriptBuilder.BuildIdentity(data.TableName, data.PrimaryKeyColumnName)}";
+                        var result = DbHandler.Query(sql);
+                        int insertedId = Convert.ToInt32(result.Rows[0][0]);
+
+						sql = 
+							$"UPDATE {data.RelationUpdate.TableName} " +
+							$"SET {data.ForeignKeyColumnName} = {insertedId} " +
+							$"WHERE {data.RelationUpdate.WhereClause}";
+
+						DbHandler.Execute(sql);
+                    }
+
 					if (data.ManyToManyData is not null)
 					{
-						sql = $" {ScriptBuilder.BuildIdentity(data.TableName, "Id")}";
+						sql = $" {ScriptBuilder.BuildIdentity(data.TableName, data.PrimaryKeyColumnName)}";
 						var result = DbHandler.Query(sql);
 						int insertedId = Convert.ToInt32(result.Rows[0][0]);
 
 						sql = $"INSERT INTO {data.ManyToManyData.TableName} " +
 							$"({data.ManyToManyData.ColumnName2}, {data.ManyToManyData.ColumnName}) " +
 							$"VALUES ({insertedId}, {data.ManyToManyData.ColumnValue})";
+
 						DbHandler.Execute(sql);
 					}
 				}
@@ -162,6 +184,21 @@ public class Repository<T> : IRepository<T> where T : class, new()
 							$"VALUES ({data.ManyToManyData.ColumnValue2}, {data.ManyToManyData.ColumnValue})";
 						DbHandler.Execute(sql);
 					}
+
+					sql = $"SELECT * FROM {data.ManyToManyData.TableName} WHERE " +
+                        $"{data.ManyToManyData.ColumnName} = {data.ManyToManyData.ColumnValue2} " +
+                        $"AND {data.ManyToManyData.ColumnName2} = {data.ManyToManyData.ColumnValue}";
+
+					DbHandler.Execute(sql);
+					exists = result.Rows.Count > 0;
+
+					if (!exists && data.ManyToManyData.ColumnName2.Contains("1"))
+					{
+                        sql = $"INSERT INTO {data.ManyToManyData.TableName} " +
+                            $"({data.ManyToManyData.ColumnName2}, {data.ManyToManyData.ColumnName}) " +
+                            $"VALUES ({data.ManyToManyData.ColumnValue}, {data.ManyToManyData.ColumnValue2})";
+                        DbHandler.Execute(sql);
+                    }
 				}
 			}
 		}
@@ -326,7 +363,13 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		return insertedId;
 	}
 
-	private void GetUpdateString<T>(T model, List<UpdateData> updateData, Type parentType = null, int? pkValue = null) where T : class, new()
+	private void GetUpdateString<T>(
+		T model, 
+		List<UpdateData> updateData, 
+		Type parentType = null, 
+		int? pkValue = null, 
+		UpdateData relationUpdate = null,
+		string foreignKeyColumnName = null) where T : class, new()
 	{
 		List<string> columns = new();
 		List<string> values = new();
@@ -350,7 +393,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 					.Name;
 
 				RelationStatement relationStatement = statement.GetRelationStatement(relationName);
-				string parentPkName = parentStatement.GetColumn("Id").ColumnName;
+				string parentPkName = parentStatement.GetPrimaryKeyColumnName();
 
 				data.ManyToManyData = new ManyToManyData
 				{
@@ -365,26 +408,69 @@ public class Repository<T> : IRepository<T> where T : class, new()
 			{
 				string fkName = statement.GetColumn(parentType.Name).ColumnName;
 
-				columns.Add($"{statement.TableName}.{fkName}");
-				values.Add(pkValue.ToString());
+				if (!columns.Contains($"{statement.TableName}.{fkName}"))
+				{
+                    columns.Add($"{statement.TableName}.{fkName}");
+                    values.Add(pkValue.ToString());
+                }
 			}
 		}
 
 		foreach (var property in model.GetType().GetProperties())
 		{
-			if (property.GetValue(model) is null)
-                continue;
+			//if (property.GetValue(model) is null)
+   //             continue;
 
-			if (parentType?.Name == property.PropertyType.Name
-				|| (property.PropertyType.GetGenericArguments().Count() > 0
-					&& parentType?.Name == property.PropertyType.GetGenericArguments()[0].Name))
+			if (parentType?.Name == property.PropertyType.Name)
+			{
+				if (!columns.Contains($"{statement.TableName}.{statement.GetColumn(property.Name).ColumnName}"))
+				{
+                    columns.Add($"{statement.TableName}.{statement.GetColumn(property.Name).ColumnName}");
+                    values.Add(pkValue.ToString());
+                }
+				
+				continue;
+			}
+
+			if (property.PropertyType.GetGenericArguments().Count() > 0
+					&& parentType?.Name == property.PropertyType.GetGenericArguments()[0].Name)
 			{
 				continue;
 			}
 
-			if (property.HasAttribute("OneToOne") && property.GetValue(model) != null)
+			if (property.HasAttribute("OneToOne"))
 			{
-				GetUpdateString(property.GetValue(model), updateData, model.GetType());
+				ModelStatement relStatement = StatementList.GetModelStatement(property.PropertyType.Name);
+
+				if (property.GetValue(model) != null)
+				{
+					var idObj = model
+						.GetPropertyValue(property.Name)
+						.GetPropertyValue(relStatement.GetPrimaryKeyPropertyName());
+
+					if (idObj != null)
+					{
+						columns.Add($"{statement.TableName}.{statement.GetColumn(property.Name).ColumnName}");
+						values.Add(idObj.ToString());
+					}
+
+                    GetUpdateString(
+						property.GetValue(model), 
+						updateData, 
+						model.GetType(), 
+						(int)model.GetPropertyValue(statement.GetPrimaryKeyPropertyName()),
+						data,
+						statement.GetColumnName(property.Name));
+                }
+				else
+				{
+					if (!columns.Contains($"{statement.TableName}.{statement.GetColumn(property.Name).ColumnName}"))
+					{
+                        columns.Add($"{statement.TableName}.{statement.GetColumn(property.Name).ColumnName}");
+                        values.Add("NULL");
+                    }
+				}
+				
 				continue;
 			}
 
@@ -395,7 +481,12 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				//	continue;
 
 				foreach (var item in (IEnumerable)property.GetValue(model))
-					GetUpdateString(item, updateData, model.GetType(), (int)model.GetPropertyValue(statement.GetPrimaryKeyPropertyName()));
+					GetUpdateString(
+						item, 
+						updateData, 
+						model.GetType(), 
+						(int)model.GetPropertyValue(statement.GetPrimaryKeyPropertyName()),
+						data);
 
 				continue;
 			}
@@ -427,15 +518,20 @@ public class Repository<T> : IRepository<T> where T : class, new()
 				columnValue = $"'{dateTimeValue.ToString("yyyy-MM-dd HH:mm:ss")}'";
 			}
 
-			columns.Add($"{columnName}");
-			values.Add(columnValue.ToString());
+			if (!columns.Contains(columnName))
+			{
+                columns.Add($"{columnName}");
+                values.Add(columnValue.ToString());
+            }
 		}
 
 		data.TableName = statement.TableName;
 		data.Columns = columns;
 		data.Values = values;
 		data.WhereClause = string.Join(" AND ", whereString);
-
+		data.PrimaryKeyColumnName = statement.GetPrimaryKeyColumnName();
+		data.ForeignKeyColumnName = foreignKeyColumnName;
+		data.RelationUpdate = relationUpdate;
 		updateData.Add(data);
 	}
 
