@@ -1,14 +1,23 @@
 <div align="center">
   <a href="http://typeorm.io/">
-    <img src="https://i.imgur.com/Qh5kczB.png" width="450" height="125">
+    <img src="https://i.imgur.com/Qh5kczB.png" width="400" height="110">
   </a>
   <br>
   <br>
-  <div style="display: flex;">
-  <a href="https://www.nuget.org/packages/MyORM.Core/">
-    <img src="https://i.imgur.com/CE2Upfu.png" width="120">
-  </a>
-  </div>
+  <div align="center">
+    <a href="https://www.nuget.org/packages/MyORM.Core/">
+         <img src="https://img.shields.io/badge/MyORM.Core-1.0.0-blue?color=%2300A76E">
+    </a>
+    <a href="https://www.nuget.org/packages/MyORM.CLI/">
+         <img src="https://img.shields.io/badge/MyORM.CLI-1.1.0-blue?color=%2300A76E">
+    </a>
+    <a href="https://www.nuget.org/packages/MyORM.Querying/">
+         <img src="https://img.shields.io/badge/MyORM.Querying-1.0.0-blue?color=%2300A76E">
+    </a>
+    <a href="https://www.nuget.org/packages/MyORM.Projectioner/">
+         <img src="https://img.shields.io/badge/MyORM.Projectioner-1.0.0-blue?color=%2300A76E">
+    </a>
+</div>
 </div>
 
 <br>
