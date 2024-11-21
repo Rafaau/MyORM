@@ -216,20 +216,16 @@ namespace TestAPI.Controllers
 			try
 			{
 				var user = _userRepository
-					.Where(u => u.Name == "TestA")
+					.Where(u => u.Name == "TestF")
 					.FindOne();
 
-				
-				
-				
 				var user2 = _userRepository
                     .Where(u => u.Name == "TestC")
                     .FindOne();
 
-                user2.Account.Posts[0].Tags.Add(new Tag { Id = 1 });
+				user.Friends.Add(user2);
 
-                //user.Friends.Add(user2);
-                _userRepository.Save(user2);
+                _userRepository.Save(user);
 
 				return Ok();
 			}

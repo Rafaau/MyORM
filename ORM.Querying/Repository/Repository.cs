@@ -192,7 +192,8 @@ public class Repository<T> : IRepository<T> where T : class, new()
 					DbHandler.Execute(sql);
 					exists = result.Rows.Count > 0;
 
-					if (!exists && data.ManyToManyData.ColumnName2.Contains("1"))
+					if (!exists 
+						&& (data.ManyToManyData.ColumnName2.Contains("1") || data.ManyToManyData.ColumnName.Contains("1")))
 					{
                         sql = $"INSERT INTO {data.ManyToManyData.TableName} " +
                             $"({data.ManyToManyData.ColumnName2}, {data.ManyToManyData.ColumnName}) " +
@@ -213,45 +214,45 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		}
 	}
 
-	public void Delete()
-	{
-		var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
-		DbHandler.Execute(sql);
-	}
+    public void Delete()
+    {
+        var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
+        DbHandler.Execute(sql);
+    }
 
-	public void Delete(T model)
-	{
-		foreach (var property in model.GetType().GetProperties())
-		{
-			if (property.HasAttribute("PrimaryGeneratedColumn"))
-			{
-				WhereString = $"WHERE {property.Name} = {property.GetValue(model)}";
-			}
-		}
+    public void Delete(T model)
+    {
+        foreach (var property in model.GetType().GetProperties())
+        {
+            if (property.HasAttribute("PrimaryGeneratedColumn"))
+            {
+                WhereString = $"WHERE {property.Name} = {property.GetValue(model)}";
+            }
+        }
 
-		var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
-		DbHandler.Execute(sql);
-	}
+        var sql = $"DELETE FROM {ModelProps.TableName} {WhereString}";
+        DbHandler.Execute(sql);
+    }
 
-	public Repository<T> OrderBy<TResult>(Expression<Func<T, TResult>> selector, OrderBy order)
-	{
-		OrderByColumn = Parameters<T>.GetOrderString(selector, order, StatementList);
-		return this;
-	}
+    public Repository<T> OrderBy<TResult>(Expression<Func<T, TResult>> selector, OrderBy order)
+    {
+        OrderByColumn = Parameters<T>.GetOrderString(selector, order, StatementList);
+        return this;
+    }
 
-	public Repository<T> Where(Expression<Func<T, bool>> predicate)
-	{
-		WhereString = Parameters<T>.GetWhereString(predicate);
-		return this;
-	}
+    public Repository<T> Where(Expression<Func<T, bool>> predicate)
+    {
+        WhereString = Parameters<T>.GetWhereString(predicate);
+        return this;
+    }
 
-	public Repository<T> Select<TResult>(Expression<Func<T, TResult>> selector)
-	{
-		SelectColumns = Parameters<T>.GetSelectString(selector, StatementList);
-		return this;
-	}
+    public Repository<T> Select<TResult>(Expression<Func<T, TResult>> selector)
+    {
+        SelectColumns = Parameters<T>.GetSelectString(selector, StatementList);
+        return this;
+    }
 
-	private void AddToSelectedColumns(AttributeHelpers.Property property, string modelName)
+    private void AddToSelectedColumns(AttributeHelpers.Property property, string modelName)
 	{
 		var statement = StatementList.Find(x => x.Name == modelName);
 		string tableName = statement.TableName;
@@ -306,14 +307,16 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		List<string> values = new();
 		List<(object Value, string PropertyName)> modelQueue = new();
 
-		foreach (var property in AttributeHelpers.GetPropsByModel(model.GetType()).Properties)
+        foreach (var property in AttributeHelpers.GetPropsByModel(model.GetType()).Properties)
 		{
 			bool isRelational = property.HasAttribute("OneToOne");
 			var columnName = property.ColumnName;
 			var columnValue = property.GetValue(model);
 
 			if ((columnValue is null && !isRelational) 
-				|| property.HasAttribute("PrimaryGeneratedColumn"))
+				|| property.HasAttribute("PrimaryGeneratedColumn")
+				|| property.HasAttribute("ManyToMany")
+				|| property.HasAttribute("OneToMany"))
 			{
 				continue;
 			}
@@ -532,6 +535,7 @@ public class Repository<T> : IRepository<T> where T : class, new()
 		data.PrimaryKeyColumnName = statement.GetPrimaryKeyColumnName();
 		data.ForeignKeyColumnName = foreignKeyColumnName;
 		data.RelationUpdate = relationUpdate;
+
 		updateData.Add(data);
 	}
 

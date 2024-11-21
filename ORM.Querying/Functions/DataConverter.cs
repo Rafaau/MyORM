@@ -35,7 +35,10 @@ internal class DataConverter
 
 		foreach (DataRow row in table.Rows)
 		{
-			obj = instance is null ? new S() : Activator.CreateInstance(instance.GetType()) as S;
+			obj = instance is null 
+				? new S() 
+				: Activator.CreateInstance(instance.GetType()) as S;
+
 			string pkName = statement.GetPrimaryKeyPropertyName();
 
 			if (parent is not null)
@@ -83,9 +86,7 @@ internal class DataConverter
 			if (result.Any(x => x.Equals(obj)))
 				continue;
 
-			// Check if the object has a valid primary key
-			//if ((int)obj.GetPropertyValue(pkName) != 0 || !hasSelector)
-				result.Add(obj);
+			result.Add(obj);
 		}
 
 		return result;
@@ -127,9 +128,6 @@ internal class DataConverter
 			if (relId != DBNull.Value && (int)relId == objId)
 			{
 				nestedItem.GetType().GetProperty(parentObj.GetType().Name).SetValue(nestedItem, parentObj);
-
-				var t = nestedItem.GetPropertyValue(parentObj.GetType().Name).GetPropertyValue(pkName);
-				var t2 = parentObj.GetPropertyValue(pkName);
 
                 if (nestedItem.GetPropertyValue(parentObj.GetType().Name).GetPropertyValue(pkName).Equals(parentObj.GetPropertyValue(pkName)))
 					relList.Add(nestedItem);

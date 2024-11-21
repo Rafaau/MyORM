@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.Identity.Client;
+using Microsoft.IdentityModel.Tokens;
 using System.Configuration;
 using System.Reflection;
 
@@ -249,5 +250,17 @@ public static class HelpersExtensions
 	{
         var property = props.Properties.Find(x => x.Name == propertyName);
 		return property.ColumnName;
+    }
+
+	public static IEnumerable<AttributeHelpers.Property> ExceptAttributes(this List<AttributeHelpers.Property> properties, params string[] attributes)
+	{
+        foreach (var attr in attributes)
+        {
+            foreach (var prop in properties)
+            {
+                if (!prop.Attributes.Any(x => x.FullName.Contains(attr)))
+                    yield return prop;
+            }
+        }
     }
 }
