@@ -12,7 +12,7 @@
          <img src="https://img.shields.io/badge/MyORM.CLI-1.1.0-blue?color=%2300A76E">
     </a>
     <a href="https://www.nuget.org/packages/MyORM.Querying/">
-         <img src="https://img.shields.io/badge/MyORM.Querying-1.0.0-blue?color=%2300A76E">
+         <img src="https://img.shields.io/badge/MyORM.Querying-1.0.1-blue?color=%2300A76E">
     </a>
     <a href="https://www.nuget.org/packages/MyORM.Projectioner/">
          <img src="https://img.shields.io/badge/MyORM.Projectioner-1.0.0-blue?color=%2300A76E">
