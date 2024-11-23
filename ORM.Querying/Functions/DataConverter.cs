@@ -8,11 +8,11 @@ namespace MyORM.Querying.Functions;
 
 internal class DataConverter
 {
-	private List<ModelStatement> StatementList { get; set; }
+	private readonly List<ModelStatement> _statementList;
 
     public DataConverter(List<ModelStatement> statementList)
     {
-        StatementList = statementList;
+        _statementList = statementList;
     }
 
     internal IEnumerable<S> MapData<S>(DataTable table, S instance = null, object parent = null) where S : class, new()
@@ -24,12 +24,12 @@ internal class DataConverter
 
 		if (instance is null)
 		{
-			statement = StatementList.GetModelStatement(typeof(S).Name);
+			statement = _statementList.GetModelStatement(typeof(S).Name);
 			props = typeof(S).GetProperties();
 		}
 		else
 		{
-			statement = StatementList.GetModelStatement(instance.GetType().Name);
+			statement = _statementList.GetModelStatement(instance.GetType().Name);
 			props = instance.GetType().GetProperties();
 		}
 
@@ -43,7 +43,10 @@ internal class DataConverter
 
 			if (parent is not null)
 			{
-				ModelStatement parentStatement = StatementList.GetModelStatement(parent.GetType().Name);
+				ModelStatement parentStatement = _statementList.GetModelStatement(parent.GetType().Name);
+
+				if (!table.Columns.Contains($"{parentStatement.TableName}.{parentStatement.GetPrimaryKeyColumnName()}"))
+					continue;
 
                 int parentPK = (int)row[$"{parentStatement.TableName}.{parentStatement.GetPrimaryKeyColumnName()}"];
 
@@ -120,7 +123,7 @@ internal class DataConverter
 		foreach (var nestedItem in nestedList)
 		{
 			int objId = (int)parentObj.GetType().GetProperty(pkName).GetValue(parentObj);
-			var nestedStatement = StatementList.FirstOrDefault(x => x.Name == itemType.Name);
+			var nestedStatement = _statementList.FirstOrDefault(x => x.Name == itemType.Name);
 			var nestedColumn = nestedStatement.GetColumn(parentObj.GetType().Name).ColumnName;
 			var relId = row[$"{nestedStatement.TableName}.{nestedColumn}"];
 

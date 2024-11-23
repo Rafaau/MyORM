@@ -6,8 +6,6 @@ using MyORM.CLI.Messaging.Services;
 using MyORM.CLI.Operations;
 using MyORM.CLI.Enums;
 
-// 1. dotnet pack
-// 2. dotnet tool install / update --global --add-source ./nupkg MyORM.CLI
 public class Program
 {
     private static void Main(string[] args)
@@ -31,18 +29,6 @@ public class Program
             command = Console.ReadLine()!.Trim();
         }
 
-        if (command.StartsWith("test"))
-        {
-			migration.Create("Test1");
-			logger.LogSuccess("MigrationCreated");
-		}
-
-        if (command.StartsWith("uat"))
-        {
-            migration.ExecuteMigration(Method.Up);
-            logger.LogSuccess("MigrationApplied");
-        }
-
         if (command.StartsWith("migration:create"))
         {
             if (args.Length < 2)
@@ -56,7 +42,7 @@ public class Program
 				}
 				catch (Exception e)
                 {
-                    logger.LogInfo($"{e.Message}\n {e.Source}\n {e.StackTrace}");
+                    logger.LogError("Exception", new[] { e.Message, e.Source });
                 }
             }
 

@@ -13,11 +13,13 @@ namespace TestAPI.Controllers
 	public class UserController : ControllerBase
 	{
 		private readonly IRepository<User> _userRepository;
+		private readonly IRepository<Account> _accountRepository;
 		private readonly DbHandler _dbHandler;
 
-		public UserController(IRepository<User> userRepository, DbHandler dbHandler)
+		public UserController(IRepository<User> userRepository, IRepository<Account> accountRepository, DbHandler dbHandler)
 		{
 			_userRepository = userRepository;
+			_accountRepository = accountRepository;
 			_dbHandler = dbHandler;
 		}
 
@@ -41,7 +43,9 @@ namespace TestAPI.Controllers
 			try
 			{
 				var users = _userRepository.Find();
-				return Ok(users);
+				var accounts = _accountRepository.Find();
+
+				return Ok(accounts);
 			}
 			catch (Exception e)
 			{
@@ -57,6 +61,7 @@ namespace TestAPI.Controllers
 				var users = _userRepository
 					.OrderBy(user => new { user.Id }, order)
 					.Find();
+
 				return Ok(users);
 			}
 			catch (Exception e)
@@ -216,14 +221,10 @@ namespace TestAPI.Controllers
 			try
 			{
 				var user = _userRepository
-					.Where(u => u.Name == "TestF")
+					.Where(u => u.Name == "TestZ")
 					.FindOne();
 
-				var user2 = _userRepository
-                    .Where(u => u.Name == "TestC")
-                    .FindOne();
-
-				user.Friends.Add(user2);
+				user.Account.Posts.Add(new Post { Content = "TestZ" });
 
                 _userRepository.Save(user);
 
