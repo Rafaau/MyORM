@@ -1,10 +1,19 @@
 ﻿namespace MyORM.CLI.Messaging;
 
+/// <summary>
+/// Error message class.
+/// </summary>
 internal class ErrorMessage : Message
 {
-	public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Red;
+    /// <summary>
+    /// Background color of the error message.
+    /// </summary>
+    public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Red;
 
-	public override Dictionary<string, string> MessageContent { get; } = new()
+    /// <summary>
+    /// Dictionary of error messages.
+    /// </summary>
+    public override Dictionary<string, string> MessageContent { get; } = new()
 	{
 		{ "MissingMigrationName", "Missing the following arguments: Migration Name" },
 		{ "InvalidInput", "Invalid input" },

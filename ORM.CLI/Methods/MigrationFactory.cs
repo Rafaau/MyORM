@@ -1,13 +1,25 @@
-﻿using MyORM;
-using MyORM.Methods;
+﻿using MyORM.Methods;
 using MyORM.Models;
 using MyORM.DBMS;
+using MyORM.CLI.Enums;
 
 namespace MyORM.CLI.Methods;
 
+/// <summary>
+/// Factory class to produce migration content.
+/// </summary>
 internal static class MigrationFactory
 {
-	public static string ProduceMigrationContent(
+    /// <summary>
+    /// Produces migration content.
+    /// </summary>
+    /// <param name="types">List of entity types</param>
+    /// <param name="nameSpace">Namespace of the migration</param>
+    /// <param name="migrationName">Name of the migration</param>
+    /// <param name="snapshotContent">Content of the snapshot</param>
+    /// <param name="databaseManagementSystem">Database management system</param>
+    /// <returns>Returns the migration content</returns>
+    public static string ProduceMigrationContent(
 		List<AttributeHelpers.ClassProps> types, 
 		string nameSpace, 
 		string migrationName, 
@@ -76,7 +88,15 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
+    /// <summary>
+    /// Produces the script for the single entity.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="type">Entity type</param>
+    /// <param name="snapshotContent">Snapshot content</param>
+    /// <param name="modelStatement">Model statement of the current entity</param>
+    /// <returns>Returns the content with the current entity script</returns>
+    internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
@@ -103,7 +123,13 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type)
+    /// <summary>
+    /// Produces the script for the single entity.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="type">Entity type</param>
+    /// <returns>Returns the content with the current entity script</returns>
+    internal static string HandleEntityPropsForUp(this string content, AttributeHelpers.ClassProps type)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 
@@ -131,7 +157,13 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	internal static string HandleEntityRelationPropsForUp(this string content, AttributeHelpers.ClassProps type)
+    /// <summary>
+    /// Produces the script for the single entity relation properties.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="type">Entity type</param>
+    /// <returns>Returns the content with the current entity relation properties script</returns>
+    internal static string HandleEntityRelationPropsForUp(this string content, AttributeHelpers.ClassProps type)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 
@@ -181,7 +213,14 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleManyToManyForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent)
+    /// <summary>
+    /// Produces the script for the many-to-many relationship for the single entity.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="type">Entity type</param>
+    /// <param name="snapshotContent">Snapshot content</param>
+    /// <returns>Returns the content with the current entity many-to-many relationship script</returns>
+    private static string HandleManyToManyForUp(this string content, AttributeHelpers.ClassProps type, string snapshotContent)
 	{
 		foreach (var prop in type.Properties.Where(x => x.Attributes.Any(x => x.FullName!.Contains("ManyToMany"))))
 		{
@@ -201,7 +240,13 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type)
+    /// <summary>
+    /// Produces the script for the single entity (down method).
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="type">Entity type</param>
+    /// <returns>Returns the content with the current entity script</returns>
+    private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
@@ -223,7 +268,15 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
+    /// <summary>
+    /// Produces the script for the single entity (down method).
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="type">Entity type</param>
+    /// <param name="snapshotContent">Snapshot content</param>
+    /// <param name="modelStatement">Model statement of the current entity</param>
+    /// <returns>Returns the content with the current entity script</returns>
+    private static string HandleEntityPropsForDown(this string content, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement? modelStatement)
 	{
 		var name = type.AttributeProps.Where(x => x.Key == "Name");
 		string tableName = name != null ? name.First().Value.ToString() : type.ClassName + "s";
@@ -252,7 +305,17 @@ internal static class MigrationFactory
 		return content;
 	}
 
-	private static string HandleEntityChanges(this string content, string tableName, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement modelStatement, Method method)
+    /// <summary>
+    /// Searches for changes in the entity by comparing the snapshot and the current entity state.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="tableName">Table name of the entity</param>
+    /// <param name="type">Entity type</param>
+    /// <param name="snapshotContent">Snapshot content</param>
+    /// <param name="modelStatement">Model statement of the current entity</param>
+    /// <param name="method">Migration method</param>
+    /// <returns>Returns the content with the changes in the entity</returns>
+    private static string HandleEntityChanges(this string content, string tableName, AttributeHelpers.ClassProps type, string snapshotContent, ModelStatement modelStatement, Method method)
 	{
 		List<string> propsString = new(); 
 
@@ -318,17 +381,5 @@ internal static class MigrationFactory
 			content += $"\r\n\t\tdbHandler.Execute(@\"ALTER TABLE {tableName} {string.Join(", ", propsString)}\");";
 
 		return content;
-	}
-
-	private enum Method
-	{
-		Up,
-		Down
-	}
-
-	internal enum Destination
-	{
-		Migration,
-		Snapshot
 	}
 }

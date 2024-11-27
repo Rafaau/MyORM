@@ -1,10 +1,19 @@
 ﻿namespace MyORM.CLI.Messaging;
 
+/// <summary>
+/// Info message class.
+/// </summary>
 internal class InfoMessage : Message
 {
-	public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Black;
+    /// <summary>
+    /// Background color of the info message.
+    /// </summary>
+    public override ConsoleColor BackgroundColor { get; } = ConsoleColor.Black;
 
-	public override Dictionary<string, string> MessageContent { get; } = new()
+    /// <summary>
+    /// Dictionary of info messages.
+    /// </summary>
+    public override Dictionary<string, string> MessageContent { get; } = new()
 	{
 		{ "CheckingDataAccessLayer", "Checking Data Access Layer..." },
 		{ "CheckingDirectory", "Checking directory: " },

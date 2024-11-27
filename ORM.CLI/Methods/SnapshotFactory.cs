@@ -4,9 +4,19 @@ using MyORM.Methods;
 
 namespace MyORM.CLI.Methods;
 
+/// <summary>
+/// Factory class for creating a snapshot file.
+/// </summary>
 internal static class SnapshotFactory
 {
-	public static string ProduceShapshotContent(List<AttributeHelpers.ClassProps> types, string nameSpace, Database databaseManagementSystem)
+    /// <summary>
+    /// Produces the content of the snapshot file.
+    /// </summary>
+    /// <param name="types">List of entity types</param>
+    /// <param name="nameSpace">Namespace of the snapshot</param>
+    /// <param name="databaseManagementSystem">Database management system</param>
+    /// <returns>Returns the content of the snapshot file</returns>
+    public static string ProduceShapshotContent(List<AttributeHelpers.ClassProps> types, string nameSpace, Database databaseManagementSystem)
 	{
 		ScriptBuilder.Database = databaseManagementSystem;
 
@@ -48,7 +58,13 @@ internal static class SnapshotFactory
 		return content;
 	}
 
-	private static string GenerateModelStatement(this string content, AttributeHelpers.ClassProps type)
+    /// <summary>
+    /// Generates the single model statement to the snapshot file.
+    /// </summary>
+    /// <param name="content">Actual content of the snapshot file</param>
+    /// <param name="type">Entity type</param>
+    /// <returns>Returns the content of the snapshot file</returns>
+    private static string GenerateModelStatement(this string content, AttributeHelpers.ClassProps type)
 	{
 		string model = $"new ModelStatement(\"{type.ClassName}\", \"{type.TableName}\", new List<ColumnStatement>()\r\n\t\t{{";
 

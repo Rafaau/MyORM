@@ -7,11 +7,21 @@ using System.Configuration;
 
 namespace MyORM.CLI.Operations;
 
+/// <summary>
+/// Migration service class.
+/// </summary>
 internal class Migration
 {
-	private static ILogger _logger;
+    /// <summary>
+    /// Logger instance.
+    /// </summary>
+    private static ILogger _logger;
 
-	public Migration(ILogger logger)
+    /// <summary>
+    /// Constructor for the Migration class <see cref="Migration"/>.
+    /// </summary>
+    /// <param name="logger">Logger instance</param>
+    public Migration(ILogger logger)
 	{
 		_logger = logger;
 
@@ -28,7 +38,12 @@ internal class Migration
 		_logger.LogInfo("BuildSucceeded", null);
 	}
 
-	public void Create(string input)
+    /// <summary>
+    /// Creates a new migration.
+    /// </summary>
+    /// <param name="input">Command input</param>
+    /// <exception cref="Exception">Exception thrown when DataAccessLayer not found</exception>
+    public void Create(string input)
 	{
 		_logger.LogInfo("CheckingDataAccessLayer", null);
 		var dataAccessProps = AttributeHelpers.GetPropsByAttribute(typeof(DataAccessLayer)).FirstOrDefault();
@@ -113,7 +128,11 @@ internal class Migration
 		_logger.LogInfo("Done", null);
 	}
 
-	public async void ExecuteMigration(Method method)
+    /// <summary>
+    /// Executes the migration.
+    /// </summary>
+    /// <param name="method">Migration method</param>
+    public async void ExecuteMigration(Method method)
 	{
 		try
 		{

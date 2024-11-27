@@ -6,8 +6,15 @@ using MyORM.CLI.Messaging.Services;
 using MyORM.CLI.Operations;
 using MyORM.CLI.Enums;
 
+/// <summary>
+/// Main program class.
+/// </summary>
 public class Program
 {
+    /// <summary>
+    /// Main method.
+    /// </summary>
+    /// <param name="args">Command line arguments</param>
     private static void Main(string[] args)
     {
         var host = Host.CreateDefaultBuilder()

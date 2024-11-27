@@ -1,10 +1,20 @@
 ﻿namespace MyORM.CLI.Messaging;
 
+/// <summary>
+/// Abstract message class.
+/// </summary>
 internal abstract class Message
 {
-	public abstract ConsoleColor BackgroundColor { get; }
+    /// <summary>
+    /// Background color of the message.
+    /// </summary>
+    public abstract ConsoleColor BackgroundColor { get; }
 
-	public virtual void InvokeMessage(string messageKey)
+    /// <summary>
+    /// Method to invoke a message by specified key.
+    /// </summary>
+    /// <param name="messageKey">Message key</param>
+    public virtual void InvokeMessage(string messageKey)
 	{
 		Console.ForegroundColor = ConsoleColor.White;
 		Console.BackgroundColor = BackgroundColor;
@@ -18,7 +28,12 @@ internal abstract class Message
 		Console.WriteLine("");
 	}
 
-	public virtual void InvokeMessage(string messageKey, string[]? args)
+    /// <summary>
+    /// Method to invoke a message by specified key with additional arguments.
+    /// </summary>
+    /// <param name="messageKey"></param>
+    /// <param name="args"></param>
+    public virtual void InvokeMessage(string messageKey, string[]? args)
 	{
 		Console.ForegroundColor = ConsoleColor.White;
 		Console.BackgroundColor = BackgroundColor;
@@ -28,7 +43,11 @@ internal abstract class Message
 		args = null;
 	}
 
-	public virtual void InvokeCustomMessage(string message)
+    /// <summary>
+    /// Method to invoke a custom message.
+    /// </summary>
+    /// <param name="message">Custom message</param>
+    public virtual void InvokeCustomMessage(string message)
 	{
 		Console.ForegroundColor = ConsoleColor.White;
 		Console.BackgroundColor = BackgroundColor;
@@ -37,7 +56,11 @@ internal abstract class Message
 		Console.WriteLine("");
 	}
 
-	public virtual void InvokeErrorMessage(Exception exception)
+    /// <summary>
+    /// Method to invoke an error message by specified exception.
+    /// </summary>
+    /// <param name="exception">Exception to log</param>
+    public virtual void InvokeErrorMessage(Exception exception)
 	{
 		Console.ForegroundColor = ConsoleColor.White;
 		Console.BackgroundColor = ConsoleColor.Red;
@@ -50,6 +73,9 @@ internal abstract class Message
 		Console.WriteLine("");
 	}
 
-	public abstract Dictionary<string, string> MessageContent { get; }
+    /// <summary>
+    /// Abstract dictionary of message content.
+    /// </summary>
+    public abstract Dictionary<string, string> MessageContent { get; }
 }
 
