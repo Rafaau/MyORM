@@ -1,13 +1,18 @@
-﻿using Microsoft.Identity.Client;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.IdentityModel.Tokens;
 using System.Configuration;
 using System.Reflection;
 
 namespace MyORM.Methods;
 
+/// <summary>
+/// Class that contains helper methods for attributes.
+/// </summary>
 public class AttributeHelpers
 {
-	public static string AssemblyPath
+    /// <summary>
+    /// Gets the path of the assembly.
+    /// </summary>
+    public static string AssemblyPath
 	{
 		get
 		{
@@ -19,14 +24,40 @@ public class AttributeHelpers
 		}
 	}
 
-	public class ClassProps
+    /// <summary>
+    /// Class that contains the properties of a class.
+    /// </summary>
+    public class ClassProps
 	{
-		public string ClassName { get; set; }
-		public Dictionary<string, object> AttributeProps { get; set; } = new Dictionary<string, object>();
-		public List<Property> Properties { get; set; } = new List<Property>();
-		public List<MethodInfo> Methods { get; set; } = new List<MethodInfo>();
-		public object? Instance { get; set; }
-		public string TableName
+        /// <summary>
+        /// Gets or sets the class name.
+        /// </summary>
+        public string ClassName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the attribute properties.
+        /// </summary>
+        public Dictionary<string, object> AttributeProps { get; set; } = new Dictionary<string, object>();
+
+        /// <summary>
+        /// Gets or sets the properties of the class.
+        /// </summary>
+        public List<Property> Properties { get; set; } = new List<Property>();
+
+        /// <summary>
+        /// Gets or sets the methods of the class.
+        /// </summary>
+        public List<MethodInfo> Methods { get; set; } = new List<MethodInfo>();
+
+        /// <summary>
+        /// Gets or sets the instance of the class.
+        /// </summary>
+        public object? Instance { get; set; }
+
+        /// <summary>
+        /// Gets the name of the table.
+        /// </summary>
+        public string TableName
 		{
 			get
 			{
@@ -34,7 +65,11 @@ public class AttributeHelpers
 				return name != null ? name.First().Value.ToString() : ClassName + "s";
 			}
 		}
-		public string PrimaryKeyColumnName
+
+        /// <summary>
+        /// Gets the name of the primary key column.
+        /// </summary>
+        public string PrimaryKeyColumnName
 		{
             get
 			{
@@ -44,15 +79,45 @@ public class AttributeHelpers
         }
 	}
 
-	public class Property
+    /// <summary>
+    /// Class that represents a single property of a class.
+    /// </summary>
+    public class Property
 	{
-		public string Name { get; set; }
-		public Type Type { get; set; }
-		public object? Value { get; set; }
-		public List<Type> Attributes { get; set; }
-		public Dictionary<string, object>? AttributeProps { get; set; }
-		public ClassProps ParentClass { get; set; }
-		public string ColumnName
+        /// <summary>
+        /// Gets or sets the name of the property.
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of the property.
+        /// </summary>
+        public Type Type { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value of the property.
+        /// </summary>
+        public object? Value { get; set; }
+
+        /// <summary>
+        /// Gets or sets the attributes of the property.
+        /// </summary>
+        public List<Type> Attributes { get; set; }
+
+        /// <summary>
+        /// Gets or sets the attribute properties of the property.
+        /// </summary>
+        public Dictionary<string, object>? AttributeProps { get; set; }
+
+        /// <summary>
+        /// Gets or sets the parent class of the property.
+        /// </summary>
+        public ClassProps ParentClass { get; set; }
+
+        /// <summary>
+        /// Gets the name of the column in the table.
+        /// </summary>
+        public string ColumnName
 		{
 			get
 			{
@@ -64,7 +129,11 @@ public class AttributeHelpers
 					return (string)AttributeProps.GetAttributePropertyValue("Name") ?? Name;
 			}
 		}
-		public ClassProps RelatedClass
+
+        /// <summary>
+        /// Gets the related class of the property.
+        /// </summary>
+        public ClassProps RelatedClass
 		{
 			get
 			{
@@ -73,14 +142,34 @@ public class AttributeHelpers
 		}
 	}
 
-	public class Method
+    /// <summary>
+    /// Class that represents a single method of a class.
+    /// </summary>
+    public class Method
 	{
-		public string Name { get; set; } = string.Empty;
-		public Type ReturnType { get; set; } = typeof(void);
-		public List<Type> ParameterTypes { get; set; } = new();
+        /// <summary>
+        /// Gets or sets the name of the method.
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the return type of the method.
+        /// </summary>
+        public Type ReturnType { get; set; } = typeof(void);
+
+        /// <summary>
+        /// Gets or sets the parameter types of the method.
+        /// </summary>
+        public List<Type> ParameterTypes { get; set; } = new();
 	}
 
-	public static List<ClassProps> GetPropsByAttribute(Type attributeType, string assemblyPath = "")
+    /// <summary>
+    /// Gets the properties of a class by an attribute.
+    /// </summary>
+    /// <param name="attributeType">Type of the attribute</param>
+    /// <param name="assemblyPath">Assembly path</param>
+    /// <returns>Returns a list of class properties</returns>
+    public static List<ClassProps> GetPropsByAttribute(Type attributeType, string assemblyPath = "")
 	{
 		List<ClassProps> props = new List<ClassProps>();
 
@@ -150,7 +239,12 @@ public class AttributeHelpers
 		return props;
 	}
 
-	public static ClassProps GetPropsByModel(Type model)
+    /// <summary>
+    /// Gets the properties of a class by the model.
+    /// </summary>
+    /// <param name="model">Type of the class</param>
+    /// <returns>Returns the class properties</returns>
+    public static ClassProps GetPropsByModel(Type model)
 	{
 		var props = new ClassProps() { ClassName = model.Name };
 		var attribute = model.GetCustomAttribute(typeof(Entity), true);
@@ -198,14 +292,29 @@ public class AttributeHelpers
 	}
 }
 
+/// <summary>
+/// Extension methods for the AttributeHelpers class.
+/// </summary>
 public static class HelpersExtensions
 {
-	public static Relationship GetRelationship(this List<AttributeHelpers.Property> properties, string propertyName) 
+    /// <summary>
+    /// Gets the relationship of a property.
+    /// </summary>
+    /// <param name="properties">List of properties</param>
+    /// <param name="propertyName">Name of the property</param>
+    /// <returns>Returns the relationship of the property</returns>
+    public static Relationship GetRelationship(this List<AttributeHelpers.Property> properties, string propertyName) 
 		=> (Relationship)properties
 			.Find(x => x.Name == propertyName).AttributeProps
 			.FirstOrDefault(x => x.Key == "Relationship").Value;
 
-	public static object? GetAttributePropertyValue(this Dictionary<string, object> attributeProps, string attributeProperty)
+    /// <summary>
+    /// Gets the value of an attribute property.
+    /// </summary>
+    /// <param name="attributeProps">Dictionary of attribute properties</param>
+    /// <param name="attributeProperty">Name of the attribute property</param>
+    /// <returns>Returns the value of the attribute property</returns>
+    public static object? GetAttributePropertyValue(this Dictionary<string, object> attributeProps, string attributeProperty)
 	{
 		var property = attributeProps.FirstOrDefault(x => x.Key == attributeProperty);
 
@@ -216,16 +325,33 @@ public static class HelpersExtensions
 
 		return property.Value;
 	}
-	public static MyORM.Relationship GetRelationship(this AttributeHelpers.Property property)
+
+    /// <summary>
+    /// Gets the relationship of a property.
+    /// </summary>
+    /// <param name="property">Property instance</param>
+    /// <returns>Returns the relationship of the property</returns>
+    public static MyORM.Relationship GetRelationship(this AttributeHelpers.Property property)
 	{
 		var relationshipAttr = property.AttributeProps.FirstOrDefault(x => x.Key == "Relationship").Value;
 		return relationshipAttr != null ? (Relationship)relationshipAttr : Relationship.Mandatory;
 	}
 
-	public static bool HasRelationship(this AttributeHelpers.Property property, Relationship relationship)
+    /// <summary>
+    /// Checks if a property has a relationship.
+    /// </summary>
+    /// <param name="property">Property instance</param>
+    /// <param name="relationship">Relationship type</param>
+    /// <returns>Returns true if the property has the relationship, otherwise false</returns>
+    public static bool HasRelationship(this AttributeHelpers.Property property, Relationship relationship)
 		=> property.GetRelationship() == relationship;
 
-	public static bool HasCascadeOption(this AttributeHelpers.Property property)
+    /// <summary>
+    /// Checks if a property has a cascade option.
+    /// </summary>
+    /// <param name="property">Property instance</param>
+    /// <returns>Returns true if the property has the cascade option, otherwise false</returns>
+    public static bool HasCascadeOption(this AttributeHelpers.Property property)
 	{
 		bool cascade = false;
 
@@ -243,16 +369,34 @@ public static class HelpersExtensions
 		return cascade;
 	}
 
-	public static object GetValue(this AttributeHelpers.Property property, object model)
+    /// <summary>
+    /// Gets the value of a property.
+    /// </summary>
+    /// <param name="property">Property instance</param>
+    /// <param name="model">Model instance</param>
+    /// <returns>Returns the value of the property</returns>
+    public static object GetValue(this AttributeHelpers.Property property, object model)
 		=> model.GetType().GetProperty(property.Name).GetValue(model);
 
-	public static string GetColumnNameByProperty(this AttributeHelpers.ClassProps props, string propertyName)
+    /// <summary>
+    /// Gets the column name of a property.
+    /// </summary>
+    /// <param name="props">Class properties</param>
+    /// <param name="propertyName">Name of the property</param>
+    /// <returns>Returns the column name of the property</returns>
+    public static string GetColumnNameByProperty(this AttributeHelpers.ClassProps props, string propertyName)
 	{
         var property = props.Properties.Find(x => x.Name == propertyName);
 		return property.ColumnName;
     }
 
-	public static IEnumerable<AttributeHelpers.Property> ExceptAttributes(this List<AttributeHelpers.Property> properties, params string[] attributes)
+    /// <summary>
+    /// Gets the properties of a class by the model.
+    /// </summary>
+    /// <param name="properties">List of properties</param>
+    /// <param name="attributes">List of attributes</param>
+    /// <returns>Returns the properties list except the ones with the specified attributes</returns>
+    public static IEnumerable<AttributeHelpers.Property> ExceptAttributes(this List<AttributeHelpers.Property> properties, params string[] attributes)
 	{
         foreach (var attr in attributes)
         {

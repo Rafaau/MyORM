@@ -1,13 +1,21 @@
 ﻿using MyORM.Methods;
-using System.Reflection.Metadata;
 
 namespace MyORM.DBMS;
 
+/// <summary>
+/// Class that builds scripts for the database.
+/// </summary>
 public static class ScriptBuilder
 {
-	public static Database Database { get; set; }
+    /// <summary>
+    /// Gets or sets the database management system.
+    /// </summary>
+    public static Database Database { get; set; }
 
-	public static string DateTimeType
+    /// <summary>
+    /// Gets the datetime type by the database management system.
+    /// </summary>
+    public static string DateTimeType
 	{
 		get
 		{
@@ -22,7 +30,10 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string DateTimeNow
+    /// <summary>
+    /// Gets the current datetime by the database management system.
+    /// </summary>
+    public static string DateTimeNow
 	{
 		get
 		{
@@ -37,7 +48,13 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string BuildPrimaryKey(string pkName)
+    /// <summary>
+    /// Builds the primary key for the database.
+    /// </summary>
+    /// <param name="pkName">Primary key name</param>
+    /// <returns>Returns the primary key build script</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string BuildPrimaryKey(string pkName)
 	{
 		switch (Database)
 		{
@@ -54,7 +71,13 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static void BuildPrimaryKey(ref string content, AttributeHelpers.Property property)
+    /// <summary>
+    /// Builds the primary key for the database.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="property">Property instance</param>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static void BuildPrimaryKey(ref string content, AttributeHelpers.Property property)
 	{
 		switch (Database)
 		{
@@ -75,7 +98,13 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static (string Content, string TableName) BuildManyToMany(AttributeHelpers.Property property)
+    /// <summary>
+    /// Builds the many-to-many relationship for the database.
+    /// </summary>
+    /// <param name="property">Property instance</param>
+    /// <returns>Returns the content and table name</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static (string Content, string TableName) BuildManyToMany(AttributeHelpers.Property property)
 	{
 		string script = "";
 		string onDelete = "CASCADE";
@@ -142,7 +171,13 @@ public static class ScriptBuilder
 		return (script, names[0]);
 	}
 
-	public static void GetDataType(ref string content, AttributeHelpers.Property property)
+    /// <summary>
+    /// Gets the data type by the property type.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <param name="property">Property instance</param>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static void GetDataType(ref string content, AttributeHelpers.Property property)
 	{
 		switch (property.Type.ToString())
 		{
@@ -211,7 +246,14 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string BuildSelect(string tableName, string columnName)
+    /// <summary>
+    /// Builds a select statement.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <param name="columnName">Name of the column</param>
+    /// <returns>Returns the select statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string BuildSelect(string tableName, string columnName)
 	{
 		switch (Database)
 		{
@@ -228,7 +270,14 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string BuildIdentity(string tableName, string columnName)
+    /// <summary>
+    /// Builds an identity statement.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <param name="columnName">Name of the column</param>
+    /// <returns>Returns the identity statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string BuildIdentity(string tableName, string columnName)
 	{
 		switch (Database)
 		{
@@ -245,7 +294,14 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string BuildForeignKey(string tableName, AttributeHelpers.Property property)
+    /// <summary>
+    /// Builds a foreign key statement.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <param name="property">Property instance</param>
+    /// <returns>Returns the foreign key statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string BuildForeignKey(string tableName, AttributeHelpers.Property property)
 	{
 		switch (Database)
 		{
@@ -264,7 +320,13 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string SelectDatabase(string dbName)
+    /// <summary>
+    /// Builds a select database statement.
+    /// </summary>
+    /// <param name="dbName">Name of the database</param>
+    /// <returns>Returns the select database statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string SelectDatabase(string dbName)
 	{
 		switch (Database)
 		{
@@ -281,7 +343,13 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string SelectTable(string tableName)
+    /// <summary>
+    /// Builds a select table statement.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <returns>Returns the select table statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string SelectTable(string tableName)
 	{
 		switch (Database)
 		{
@@ -298,7 +366,14 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string SelectLastRecord(string columnName, string tableName)
+    /// <summary>
+    /// Builds a select last record statement.
+    /// </summary>
+    /// <param name="columnName">Name of the column</param>
+    /// <param name="tableName">Name of the table</param>
+    /// <returns>Returns the select column statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string SelectLastRecord(string columnName, string tableName)
 	{
 		switch (Database)
 		{
@@ -315,7 +390,15 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string Rename(string tableName, string oldColumnName, string newColumnName)
+    /// <summary>
+    /// Builds a rename column statement.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <param name="oldColumnName">Name of the old column</param>
+    /// <param name="newColumnName">Name of the new column</param>
+    /// <returns>Returns the rename column statement</returns>
+    /// <exception cref="Exception">Exception thrown when the database is not supported</exception>
+    public static string Rename(string tableName, string oldColumnName, string newColumnName)
 	{
 		switch (Database)
 		{
@@ -332,7 +415,13 @@ public static class ScriptBuilder
 		}
 	}
 
-	public static string HandlePropertyOptions(AttributeHelpers.Property prop, Operation operation)
+    /// <summary>
+    /// Builds a property options statement.
+    /// </summary>
+    /// <param name="prop">Property instance</param>
+    /// <param name="operation">Operation type</param>
+    /// <returns>Returns the property options statement</returns>
+    public static string HandlePropertyOptions(AttributeHelpers.Property prop, Operation operation)
 	{
 		string content = "";
 
@@ -382,15 +471,28 @@ public static class ScriptBuilder
 	}
 }
 
+/// <summary>
+/// Extension methods for the script builder.
+/// </summary>
 public static class Extensions
 {
+    /// <summary>
+    /// Removes the spacing formatting from the content.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <returns>Returns the content without spacing formatting</returns>
     public static string RemoveFormatting(this string content)
 	{
 		content = content.Replace("\r\n\t\t\t\t", "");
 		return content.Replace("  ", " ");
-	} 
+	}
 
-	public static string RemoveUnique(this string content)
+    /// <summary>
+    /// Removes the unique constraint from the content.
+    /// </summary>
+    /// <param name="content">Actual content</param>
+    /// <returns>Returns the content without the unique constraint</returns>
+    public static string RemoveUnique(this string content)
 	{
 		return content.Replace(" UNIQUE", "");
 	}

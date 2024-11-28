@@ -4,18 +4,41 @@ using Npgsql;
 using System.Data.Common;
 using MyORM.DBMS;
 using Microsoft.Data.SqlClient;
-using System.Transactions;
 using Microsoft.Data.Sqlite;
 
 namespace MyORM.Methods;
+
+/// <summary>
+/// Class that manages the database connection and operations.
+/// </summary>
 internal class DatabaseManager : IDisposable
 {
-	private DbConnection Connection { get; set; }
-	private string DbName { get; set; }
-	private DbTransaction? Transaction { get; set; }
-	private bool KeepConnectionOpen { get; set; }
+    /// <summary>
+    /// Gets or sets the database connection.
+    /// </summary>
+    private DbConnection Connection { get; set; }
 
-	public DatabaseManager(AccessLayer accessLayer)
+    /// <summary>
+    /// Gets or sets the database name.
+    /// </summary>
+    private string DbName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the database transaction.
+    /// </summary>
+    private DbTransaction? Transaction { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to keep the connection open.
+    /// </summary>
+    private bool KeepConnectionOpen { get; set; }
+
+    /// <summary>
+    /// Constructor that initializes the database manager.
+    /// </summary>
+    /// <param name="accessLayer">Access layer instance</param>
+    /// <exception cref="Exception">Exception that is thrown when the database is not supported.</exception>
+    public DatabaseManager(AccessLayer accessLayer)
 	{
 		DbName = GetDbName(accessLayer.ConnectionString);
 		KeepConnectionOpen = accessLayer.Options.KeepConnectionOpen;
@@ -43,11 +66,20 @@ internal class DatabaseManager : IDisposable
 		Connection.Close();
 	}
 
-	public void OpenConnection() => Connection.Open();
+    /// <summary>
+    /// Opens the connection to the database.
+    /// </summary>
+    public void OpenConnection() => Connection.Open();
 
-	public void CloseConnection() => Connection.Close();
+    /// <summary>
+    /// Closes the connection to the database.
+    /// </summary>
+    public void CloseConnection() => Connection.Close();
 
-	public void BeginTransaction()
+    /// <summary>
+    /// Begins a transaction.
+    /// </summary>
+    public void BeginTransaction()
 	{
 		if (Connection.State == ConnectionState.Closed)
 			Connection.Open();
@@ -56,7 +88,10 @@ internal class DatabaseManager : IDisposable
 			Transaction = Connection.BeginTransaction();
 	}
 
-	public void CommitTransaction()
+    /// <summary>
+    /// Commits the transaction.
+    /// </summary>
+    public void CommitTransaction()
 	{
 		Transaction?.Commit();
 		Transaction = null;
@@ -64,7 +99,10 @@ internal class DatabaseManager : IDisposable
 			Connection.Close();
 	}
 
-	public void RollbackTransaction()
+    /// <summary>
+    /// Rolls back the transaction.
+    /// </summary>
+    public void RollbackTransaction()
 	{
 		Transaction?.Rollback();
 		Transaction = null;
@@ -72,7 +110,12 @@ internal class DatabaseManager : IDisposable
 			Connection.Close();
 	}
 
-	public int ExecuteNonQuery(string sqlCommandText)
+    /// <summary>
+    /// Executes a non query.
+    /// </summary>
+    /// <param name="sqlCommandText">Command text</param>
+    /// <returns>Returns the number of rows affected</returns>
+    public int ExecuteNonQuery(string sqlCommandText)
 	{
 		try
 		{
@@ -99,7 +142,12 @@ internal class DatabaseManager : IDisposable
 		}
 	}
 
-	public DataTable ExecuteQuery(string sqlCommandText)
+    /// <summary>
+    /// Executes a query.
+    /// </summary>
+    /// <param name="sqlCommandText">Command text</param>
+    /// <returns>Returns the result of the query</returns>
+    public DataTable ExecuteQuery(string sqlCommandText)
 	{
 		try
 		{
@@ -133,7 +181,12 @@ internal class DatabaseManager : IDisposable
 		}
 	}
 
-	public bool CheckIfTableExists(string tableName)
+    /// <summary>
+    /// Checks if a table exists.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <returns>Returns a value indicating whether the table exists</returns>
+    public bool CheckIfTableExists(string tableName)
 	{
 		try
 		{
@@ -160,7 +213,14 @@ internal class DatabaseManager : IDisposable
 		}
 	}
 
-	public bool CheckTheLastRecord(string tableName, string columnName, string value)
+    /// <summary>
+    /// Checks if the last record of a table has a specific value.
+    /// </summary>
+    /// <param name="tableName">Name of the table</param>
+    /// <param name="columnName">Name of the column</param>
+    /// <param name="value">Value to check</param>
+    /// <returns>Returns a value indicating whether the last record has the specific value</returns>
+    public bool CheckTheLastRecord(string tableName, string columnName, string value)
 	{
 		if (Connection.State == ConnectionState.Closed)
 		{
@@ -190,7 +250,10 @@ internal class DatabaseManager : IDisposable
 		}
 	}
 
-	private void CheckDatabase()
+    /// <summary>
+    /// Checks if the database exists and creates it if it does not.
+    /// </summary>
+    private void CheckDatabase()
 	{
 		if (!DatabaseExists(Connection, DbName))
 		{
@@ -200,7 +263,13 @@ internal class DatabaseManager : IDisposable
 		Connection.ChangeDatabase(DbName);
 	}
 
-	private bool DatabaseExists(DbConnection connection, string dbName)
+    /// <summary>
+    /// Checks if the database exists.
+    /// </summary>
+    /// <param name="connection">Connection to the database</param>
+    /// <param name="dbName">Name of the database</param>
+    /// <returns>Returns a value indicating whether the database exists</returns>
+    private bool DatabaseExists(DbConnection connection, string dbName)
 	{
 		using (DbCommand command = connection.CreateCommand())
 		{
@@ -214,7 +283,12 @@ internal class DatabaseManager : IDisposable
 		}
 	}
 
-	private void CreateDatabase(DbConnection connection, string dbName)
+    /// <summary>
+    /// Creates a database.
+    /// </summary>
+    /// <param name="connection">Connection to the database</param>
+    /// <param name="dbName">Name of the database</param>
+    private void CreateDatabase(DbConnection connection, string dbName)
 	{
 		using (DbCommand command = connection.CreateCommand())
 		{
@@ -224,7 +298,12 @@ internal class DatabaseManager : IDisposable
 		}
 	}
 
-	private string GetDbName(string connectionString)
+    /// <summary>
+    /// Gets the database name from the connection string.
+    /// </summary>
+    /// <param name="connectionString">Connection string</param>
+    /// <returns>Returns the database name</returns>
+    private string GetDbName(string connectionString)
 	{
 		return connectionString.Split(';')
 			.Select(x => x.Split('='))
@@ -233,7 +312,10 @@ internal class DatabaseManager : IDisposable
 			.FirstOrDefault();
 	}
 
-	public void Dispose()
+    /// <summary>
+    /// Disposes the database manager.
+    /// </summary>
+    public void Dispose()
 	{
 		Connection.Dispose();
 	}

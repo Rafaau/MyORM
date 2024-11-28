@@ -2,9 +2,15 @@
 
 namespace MyORM.Methods;
 
+/// <summary>
+/// Class for project build.
+/// </summary>
 public static class Project
 {
-	public static void Build()
+    /// <summary>
+    /// Builds the project.
+    /// </summary>
+    public static void Build()
 	{
 		string csproj = GetCsproj();
 
@@ -20,12 +26,14 @@ public static class Project
 		string output = process.StandardOutput.ReadToEnd();
 		string error = process.StandardError.ReadToEnd();
 		process.WaitForExit();
-
-		//if (process.ExitCode != 0)
-		//    throw new Exception(error);
 	}
 
-	public static string GetCsproj()
+    /// <summary>
+    /// Gets the csproj file path.
+    /// </summary>
+    /// <returns>Returns the csproj file path</returns>
+    /// <exception cref="FileNotFoundException">Exception that is thrown when the csproj file is not found.</exception>
+    public static string GetCsproj()
 	{
 		string currentDirectory = Directory.GetCurrentDirectory();
 
