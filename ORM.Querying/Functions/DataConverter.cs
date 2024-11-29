@@ -6,15 +6,33 @@ using System.Collections;
 
 namespace MyORM.Querying.Functions;
 
+/// <summary>
+/// Class that converts data from a DataTable to a model.
+/// </summary>
 internal class DataConverter
 {
-	private readonly List<ModelStatement> _statementList;
+    /// <summary>
+    /// List of model statements.
+    /// </summary>
+    private readonly List<ModelStatement> _statementList;
 
+    /// <summary>
+    /// Constructor for the <see cref="DataConverter"/> class.
+    /// </summary>
+    /// <param name="statementList">List of model statements</param>
     public DataConverter(List<ModelStatement> statementList)
     {
         _statementList = statementList;
     }
 
+    /// <summary>
+    /// Maps the data from a DataTable to a model.
+    /// </summary>
+    /// <typeparam name="S">Type of the model</typeparam>
+    /// <param name="table">Table to map the data</param>
+    /// <param name="instance">Instance of the model</param>
+    /// <param name="parent">Parent object</param>
+    /// <returns>Returns the mapped data</returns>
     internal IEnumerable<S> MapData<S>(DataTable table, S instance = null, object parent = null) where S : class, new()
 	{
 		ModelStatement statement;
@@ -95,10 +113,25 @@ internal class DataConverter
 		return result;
 	}
 
-	private bool IsSimpleType(Type type)
+    /// <summary>
+    /// Checks if the type is a simple type.
+    /// </summary>
+    /// <param name="type">Type to check</param>
+    /// <returns>Returns true if the type is a simple type, otherwise false</returns>
+    private bool IsSimpleType(Type type)
 		=> type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(DateTime) || type == typeof(decimal);
 
-	private object GetNestedObject<S>(DataTable table, DataRow row, PropertyInfo property, ModelStatement statement, S parentObj) where S : class, new()
+    /// <summary>
+    /// Gets the nested object.
+    /// </summary>
+    /// <typeparam name="S">Type of the model</typeparam>
+    /// <param name="table">Table to get the data</param>
+    /// <param name="row">Row to get the data</param>
+    /// <param name="property">Property to get the data</param>
+    /// <param name="statement">Statement of the model</param>
+    /// <param name="parentObj">Parent object</param>
+    /// <returns>Returns the nested object</returns>
+    private object GetNestedObject<S>(DataTable table, DataRow row, PropertyInfo property, ModelStatement statement, S parentObj) where S : class, new()
 	{
 		object nestedInstance = Activator.CreateInstance(property.PropertyType);
 		ColumnStatement nestedColumn = statement.GetColumn(property.Name);
@@ -112,7 +145,17 @@ internal class DataConverter
 		return nestedObj;
 	}
 
-	private IList GetNestedObjectList<S>(DataTable table, DataRow row, PropertyInfo property, string pkName, S parentObj) where S : class, new()
+    /// <summary>
+    /// Gets the nested object list.
+    /// </summary>
+    /// <typeparam name="S">Type of the model</typeparam>
+    /// <param name="table">Table to get the data</param>
+    /// <param name="row">Row to get the data</param>
+    /// <param name="property">Property to get the data</param>
+    /// <param name="pkName">Primary key name</param>
+    /// <param name="parentObj">Parent object</param>
+    /// <returns>Returns the nested object list</returns>
+    private IList GetNestedObjectList<S>(DataTable table, DataRow row, PropertyInfo property, string pkName, S parentObj) where S : class, new()
 	{
 		Type itemType = property.PropertyType.GetGenericArguments()[0];
 		var nestedInstance = Activator.CreateInstance(itemType);

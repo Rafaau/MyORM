@@ -1,11 +1,18 @@
-﻿using System.Reflection;
-using System.Transactions;
+﻿namespace MyORM.Projectioner.Methods;
 
-namespace MyORM.Projectioner.Methods;
-
+/// <summary>
+/// Helper class for projection.
+/// </summary>
 public static class ProjectionHelper
 {
-	public static T ToProjection<T>(this object source, T instance = null) where T : class, new()
+    /// <summary>
+    /// Projects the source object to the instance object.
+    /// </summary>
+    /// <typeparam name="T">The type of the object to project</typeparam>
+    /// <param name="source">Source object to project</param>
+    /// <param name="instance">Instance object to project to</param>
+    /// <returns>Returns the projected object</returns>
+    public static T ToProjection<T>(this object source, T instance = null) where T : class, new()
 	{
 		var project = instance == null ? new T() : instance;
 		var sourceProperties = source.GetType().GetProperties();

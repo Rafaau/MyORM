@@ -2,22 +2,30 @@
 using MyORM.Methods;
 using MyORM.Models;
 using MyORM.Querying.Models;
-using Org.BouncyCastle.Asn1.X509.Qualified;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MyORM.Querying.Functions;
 
+/// <summary>
+/// Helper class for the repository.
+/// </summary>
 internal class RepositoryHelper
 {
+    /// <summary>
+    /// List of all columns.
+    /// </summary>
     public List<string> AllColumnsList { get; set; } = new();
+
+    /// <summary>
+    /// List of model statements.
+    /// </summary>
     public List<ModelStatement> StatementList { get; set; }
+
+    /// <summary>
+    /// String of all columns.
+    /// </summary>
     public string AllColumnsString
     {
         get
@@ -26,28 +34,57 @@ internal class RepositoryHelper
         }
     }
 
+    /// <summary>
+    /// Database handler instance.
+    /// </summary>
     private DbHandler dbHandler;
+
+    /// <summary>
+    /// Data converter instance.
+    /// </summary>
     private DataConverter dataConverter;
-    private Type Model;
+
+    /// <summary>
+    /// Model type.
+    /// </summary>
+    private Type model;
+
+    /// <summary>
+    /// Model statement.
+    /// </summary>
     private ModelStatement statement
     {
         get
         {
-            return StatementList.GetModelStatement(Model.Name);
+            return StatementList.GetModelStatement(model.Name);
         }
     }
+
+    /// <summary>
+    /// Model properties.
+    /// </summary>
     private AttributeHelpers.ClassProps ModelProps
     {
         get
         {
-            return AttributeHelpers.GetPropsByModel(Model);
+            return AttributeHelpers.GetPropsByModel(model);
         }
     }
+
+    /// <summary>
+    /// Select columns.
+    /// </summary>
     private string _selectColumns;
 
+    /// <summary>
+    /// Constructor for the <see cref="RepositoryHelper"/> class.
+    /// </summary>
+    /// <param name="dbHandler">Database handler instance</param>
+    /// <param name="model">Model type</param>
+    /// <param name="selectColumns">Select columns</param>
     public RepositoryHelper(DbHandler dbHandler, Type model, string selectColumns)
     {
-        Model = model;
+        model = model;
         dbHandler = dbHandler;
         _selectColumns = selectColumns;
 
@@ -55,6 +92,10 @@ internal class RepositoryHelper
         dataConverter = new DataConverter(StatementList);
     }
 
+    /// <summary>
+    /// Initializes the repository helper.
+    /// </summary>
+    /// <exception cref="Exception">Error getting model statements from Access Layer</exception>
     public void Initialize()
     {
         try
@@ -76,6 +117,11 @@ internal class RepositoryHelper
         }
     }
 
+    /// <summary>
+    /// Adds the property to the selected columns.
+    /// </summary>
+    /// <param name="property">Property to add</param>
+    /// <param name="modelName">Model name</param>
     public void AddToSelectedColumns(AttributeHelpers.Property property, string modelName)
     {
         var statement = StatementList.Find(x => x.Name == modelName);
@@ -87,6 +133,12 @@ internal class RepositoryHelper
         }
     }
 
+    /// <summary>
+    /// Finds all relations of the model.
+    /// </summary>
+    /// <param name="modelProps">Properties of the model</param>
+    /// <param name="parentType">Type of the parent</param>
+    /// <returns>Returns the join string</returns>
     public string FindAllRelations(AttributeHelpers.ClassProps modelProps, Type parentType)
     {
         string joinString = string.Empty;
@@ -124,6 +176,12 @@ internal class RepositoryHelper
         return joinString;
     }
 
+    /// <summary>
+    /// Inserts the model into the database.
+    /// </summary>
+    /// <param name="model">Model to insert</param>
+    /// <param name="id">Id of the inserted record</param>
+    /// <returns>Returns the inserted id</returns>
     public int InsertInto(object model, int id = 0)
     {
         AttributeHelpers.ClassProps modelProps = AttributeHelpers.GetPropsByModel(model.GetType());
@@ -190,6 +248,10 @@ internal class RepositoryHelper
         return insertedId;
     }
 
+    /// <summary>
+    /// Updates the model in the database.
+    /// </summary>
+    /// <param name="updateData">List of models to update</param>
     public void Update(List<UpdateData> updateData)
     {
         foreach (var data in updateData)
@@ -272,6 +334,16 @@ internal class RepositoryHelper
         }
     }
 
+    /// <summary>
+    /// Gets the update string for the model.
+    /// </summary>
+    /// <typeparam name="T">Type of the model</typeparam>
+    /// <param name="model">Model to update</param>
+    /// <param name="updateData">List of update data</param>
+    /// <param name="parentType">Type of the parent</param>
+    /// <param name="pkValue">Primary key value</param>
+    /// <param name="relationUpdate">Relation update data</param>
+    /// <param name="foreignKeyColumnName">Foreign key column name</param>
     public void GetUpdateString<T>(
         T model,
         List<UpdateData> updateData,
@@ -438,6 +510,14 @@ internal class RepositoryHelper
         updateData.Add(data);
     }
 
+    /// <summary>
+    /// Adds the property to the selected columns.
+    /// </summary>
+    /// <typeparam name="S">Type of the model</typeparam>
+    /// <param name="data">List of data</param>
+    /// <param name="instance">Instance of the model</param>
+    /// <param name="parentType">Type of the parent</param>
+    /// <returns>Returns the mapped data</returns>
     public IEnumerable<S> MapManyToMany<S>(IEnumerable<S> data, S instance = null, Type parentType = null) where S : class, new()
     {
         ModelStatement statement;
@@ -541,6 +621,12 @@ internal class RepositoryHelper
         return data;
     }
 
+    /// <summary>
+    /// Converts the data to the specified type.
+    /// </summary>
+    /// <typeparam name="S">Type of the model</typeparam>
+    /// <param name="table">Table to convert</param>
+    /// <returns>Returns the converted data</returns>
     public IEnumerable<S> ConvertData<S>(DataTable table) where S : class, new()
     {
         var data = dataConverter.MapData<S>(table);

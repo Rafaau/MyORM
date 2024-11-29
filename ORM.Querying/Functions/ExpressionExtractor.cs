@@ -8,9 +8,18 @@ using System.Text;
 
 namespace MyORM.Querying.Functions;
 
+/// <summary>
+/// Class for extracting expressions for the query.
+/// </summary>
 internal static class ExpressionExtractor
 {
-	public static void ProcessExpression(Expression expression, StringBuilder whereClause)
+    /// <summary>
+    /// Processes the expression.
+    /// </summary>
+    /// <param name="expression">Expression to process</param>
+    /// <param name="whereClause">Where clause</param>
+    /// <exception cref="NotSupportedException">Exception for unsupported expression type</exception>
+    public static void ProcessExpression(Expression expression, StringBuilder whereClause)
 	{
 		switch (expression.NodeType)
 		{
@@ -98,7 +107,16 @@ internal static class ExpressionExtractor
 		}
 	}
 
-	public static List<string> ExtractPropertyNames<T, TResult>(Expression<Func<T, TResult>> expression, ParameterType parameterType, List<ModelStatement> statementsList)
+    /// <summary>
+    /// Extracts the property names.
+    /// </summary>
+    /// <typeparam name="T">Type of the model</typeparam>
+    /// <typeparam name="TResult">Type of the result</typeparam>
+    /// <param name="expression">Expression to extract the property names</param>
+    /// <param name="parameterType">Type of the parameter</param>
+    /// <param name="statementsList">List of model statements</param>
+    /// <returns>Returns the list of property names</returns>
+    public static List<string> ExtractPropertyNames<T, TResult>(Expression<Func<T, TResult>> expression, ParameterType parameterType, List<ModelStatement> statementsList)
 	{
 		var names = new List<string>();
 
@@ -120,7 +138,13 @@ internal static class ExpressionExtractor
 		return names;
 	}
 
-	private static object ExtractValue(Expression expression)
+    /// <summary>
+    /// Extracts the value from the expression.
+    /// </summary>
+    /// <param name="expression">Expression to extract the value</param>
+    /// <returns>Returns the extracted value</returns>
+    /// <exception cref="NotSupportedException">Exception for unsupported member type</exception>
+    private static object ExtractValue(Expression expression)
 	{
 		if (expression is ConstantExpression constant)
 		{
@@ -147,7 +171,12 @@ internal static class ExpressionExtractor
 		return getter();
 	}
 
-	private static string FormatValueForSql(object value)
+    /// <summary>
+    /// Formats the value for SQL.
+    /// </summary>
+    /// <param name="value">Value to format</param>
+    /// <returns>Returns the formatted value</returns>
+    private static string FormatValueForSql(object value)
 	{
 		if (value is string strValue)
 			return $"'{strValue}'";
